@@ -21,9 +21,19 @@ import { EditIssueModal } from '@/components/EditIssueModal'
 import { Header } from '@/components/Header'
 import { CommandPalette } from '@/components/CommandPalette'
 import { DeleteProjectModal } from '@/components/DeleteProjectModal'
-import { useSearchIssues, useUpdateIssue } from '@/hooks/useIssues'
+import { useSearchIssues, useUpdateIssue, useDeleteIssue } from '@/hooks/useIssues'
 import { Issue } from '@/types/issue'
 import { useProjects } from '@/hooks/useProjects'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
 import { slideVariants, slideTransition } from '@/lib/animations'
 import {
   useActiveId,
@@ -46,6 +56,7 @@ function App(): React.JSX.Element {
   const [searchQuery, setSearchQuery] = useState('')
   const { data: issues = [] } = useSearchIssues(searchQuery)
   const updateIssue = useUpdateIssue()
+  const deleteIssue = useDeleteIssue()
 
   // Project state
   const { data: projects = [] } = useProjects()
@@ -63,6 +74,7 @@ function App(): React.JSX.Element {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editingIssue, setEditingIssue] = useState<Issue | null>(null)
   const [isDeleteProjectModalOpen, setIsDeleteProjectModalOpen] = useState(false)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
   // DnD state from Zustand
   const activeId = useActiveId()
@@ -234,10 +246,17 @@ function App(): React.JSX.Element {
     [issues]
   )
 
-  const handleDelete = useCallback((_id: string) => {
-    // This would be handled by the details modal
+  const handleDelete = useCallback((id: string) => {
     setIsDetailsModalOpen(false)
+    setDeleteConfirmId(id)
   }, [])
+
+  const confirmDelete = useCallback(() => {
+    if (deleteConfirmId) {
+      deleteIssue.mutate(deleteConfirmId)
+      setDeleteConfirmId(null)
+    }
+  }, [deleteConfirmId, deleteIssue])
 
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
@@ -412,6 +431,28 @@ function App(): React.JSX.Element {
             }
           }}
         />
+
+        {/* Delete Issue Confirmation Dialog */}
+        <AlertDialog
+          open={!!deleteConfirmId}
+          onOpenChange={(open) => !open && setDeleteConfirmId(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the issue from your
+                tracker.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setDeleteConfirmId(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete} autoFocus>
+                Delete Issue
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DndContext>
   )

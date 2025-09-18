@@ -10,10 +10,15 @@ import {
 import { useDroppable } from '@dnd-kit/core'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useSearchIssues, useDeleteIssue, useUpdateIssue, useSearchIssuesInProject } from '@/hooks/useIssues'
+import {
+  useSearchIssues,
+  useDeleteIssue,
+  useUpdateIssue,
+  useSearchIssuesInProject
+} from '@/hooks/useIssues'
 import { IssueDetailsModal } from './IssueDetailsModal'
 import { EditIssueModal } from './EditIssueModal'
-import { Issue, IssuePriority, IssueStatus, IssueEffort } from '@/types/issue'
+import { Issue, IssuePriority, IssueStatus, IssueEffort, IssueType } from '@/types/issue'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -36,11 +41,27 @@ import {
   TableCell
 } from '@/components/ui/table'
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
 
 interface IssueListProps {
   searchQuery: string
   onIssueClick?: (issue: Issue) => void
   projectId?: number | null
+  issues?: Issue[] // Pre-filtered issues from parent
+  showFilters?: boolean
+  typeFilter?: IssueType | 'all'
+  setTypeFilter?: (value: IssueType | 'all') => void
+  priorityFilter?: IssuePriority | 'all'
+  setPriorityFilter?: (value: IssuePriority | 'all') => void
+  effortFilter?: IssueEffort | 'all'
+  setEffortFilter?: (value: IssueEffort | 'all') => void
 }
 
 const priorityOrder: Record<IssuePriority, number> = {
@@ -99,15 +120,17 @@ interface DraggableRowProps {
   children: React.ReactNode
 }
 
-function DraggableRow({ issue, isActive, onMouseEnter, onMouseLeave, onClick, children }: DraggableRowProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging
-  } = useSortable({ id: `open-${issue.id}` }) // Namespaced ID
+function DraggableRow({
+  issue,
+  isActive,
+  onMouseEnter,
+  onMouseLeave,
+  onClick,
+  children
+}: DraggableRowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: `open-${issue.id}`
+  }) // Namespaced ID
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -122,9 +145,7 @@ function DraggableRow({ issue, isActive, onMouseEnter, onMouseLeave, onClick, ch
       {...listeners}
       className={`cursor-pointer transition-colors ${
         issue._isOptimistic ? 'opacity-90' : ''
-      } ${isActive ? 'bg-accent' : ''} ${
-        isDragging ? 'opacity-50' : ''
-      }`}
+      } ${isActive ? 'bg-accent' : ''} ${isDragging ? 'opacity-50' : ''}`}
       data-active={isActive ? 'true' : undefined}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
@@ -135,19 +156,39 @@ function DraggableRow({ issue, isActive, onMouseEnter, onMouseLeave, onClick, ch
   )
 }
 
-export function IssueList({ searchQuery, onIssueClick, projectId }: IssueListProps): React.JSX.Element {
-  const { data: allIssuesFromAll = [], isLoading: isLoadingAll, error: errorAll } = useSearchIssues(searchQuery)
-  const { data: allIssuesFromProject = [], isLoading: isLoadingProject, error: errorProject } = useSearchIssuesInProject(projectId || null, searchQuery)
-
-  const allIssues = projectId ? allIssuesFromProject : allIssuesFromAll
-  const isLoading = projectId ? isLoadingProject : isLoadingAll
-  const error = projectId ? errorProject : errorAll
-
-  // Filter to show only open issues in the table
-  const issues = useMemo(
-    () => allIssues.filter(issue => issue.status === 'open'),
-    [allIssues]
+export function IssueList({
+  searchQuery,
+  onIssueClick,
+  projectId,
+  issues: propsIssues, // Pre-filtered issues from parent
+  showFilters = false,
+  typeFilter: externalTypeFilter,
+  setTypeFilter: externalSetTypeFilter,
+  priorityFilter: externalPriorityFilter,
+  setPriorityFilter: externalSetPriorityFilter,
+  effortFilter: externalEffortFilter,
+  setEffortFilter: externalSetEffortFilter
+}: IssueListProps): React.JSX.Element {
+  // Only fetch issues if not provided via props
+  const {
+    data: fetchedIssuesAll = [],
+    isLoading: isLoadingAll,
+    error: errorAll
+  } = useSearchIssues(propsIssues ? '' : searchQuery)
+  const {
+    data: fetchedIssuesProject = [],
+    isLoading: isLoadingProject,
+    error: errorProject
+  } = useSearchIssuesInProject(
+    propsIssues ? null : projectId || null,
+    propsIssues ? '' : searchQuery
   )
+
+  // Use provided issues or fetch them
+  const allIssues = propsIssues || (projectId ? fetchedIssuesProject : fetchedIssuesAll)
+  const isLoading = propsIssues ? false : projectId ? isLoadingProject : isLoadingAll
+  const error = propsIssues ? null : projectId ? errorProject : errorAll
+
   const deleteIssue = useDeleteIssue()
   const updateIssue = useUpdateIssue()
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null)
@@ -156,6 +197,36 @@ export function IssueList({ searchQuery, onIssueClick, projectId }: IssueListPro
   const [editingIssue, setEditingIssue] = useState<Issue | null>(null)
   const [sorting, setSorting] = useState<SortingState>([])
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+
+  // Filter states - use external props if provided, otherwise use local state
+  const [localTypeFilter, setLocalTypeFilter] = useState<IssueType | 'all'>('all')
+  const [localPriorityFilter, setLocalPriorityFilter] = useState<IssuePriority | 'all'>('all')
+  const [localEffortFilter, setLocalEffortFilter] = useState<IssueEffort | 'all'>('all')
+
+  const typeFilter = externalTypeFilter ?? localTypeFilter
+  const setTypeFilter = externalSetTypeFilter ?? setLocalTypeFilter
+  const priorityFilter = externalPriorityFilter ?? localPriorityFilter
+  const setPriorityFilter = externalSetPriorityFilter ?? setLocalPriorityFilter
+  const effortFilter = externalEffortFilter ?? localEffortFilter
+  const setEffortFilter = externalSetEffortFilter ?? setLocalEffortFilter
+
+  // Apply only type/priority/effort filters (not status - that's handled by parent)
+  const issues = useMemo(
+    () =>
+      allIssues.filter((issue) => {
+        // Apply type filter
+        if (typeFilter !== 'all' && issue.issueType !== typeFilter) return false
+
+        // Apply priority filter
+        if (priorityFilter !== 'all' && issue.priority !== priorityFilter) return false
+
+        // Apply effort filter
+        if (effortFilter !== 'all' && issue.effort !== effortFilter) return false
+
+        return true
+      }),
+    [allIssues, typeFilter, priorityFilter, effortFilter]
+  )
 
   // Unified selection state
   const [selectionMode, setSelectionMode] = useState<'keyboard' | 'mouse'>('mouse')
@@ -200,13 +271,10 @@ export function IssueList({ searchQuery, onIssueClick, projectId }: IssueListPro
     [issues]
   )
 
-  const handleDelete = useCallback(
-    (id: string) => {
-      setDeleteConfirmId(id)
-      setIsModalOpen(false)
-    },
-    []
-  )
+  const handleDelete = useCallback((id: string) => {
+    setDeleteConfirmId(id)
+    setIsModalOpen(false)
+  }, [])
 
   const confirmDelete = useCallback(() => {
     if (deleteConfirmId) {
@@ -215,14 +283,17 @@ export function IssueList({ searchQuery, onIssueClick, projectId }: IssueListPro
     }
   }, [deleteConfirmId, deleteIssue])
 
-  const handleRowClick = useCallback((issue: Issue) => {
-    if (onIssueClick) {
-      onIssueClick(issue)
-    } else {
-      setSelectedIssue(issue)
-      setIsModalOpen(true)
-    }
-  }, [onIssueClick])
+  const handleRowClick = useCallback(
+    (issue: Issue) => {
+      if (onIssueClick) {
+        onIssueClick(issue)
+      } else {
+        setSelectedIssue(issue)
+        setIsModalOpen(true)
+      }
+    },
+    [onIssueClick]
+  )
 
   // Cycle through statuses: open -> in_progress -> completed -> open
   const cycleStatus = useCallback(
@@ -252,8 +323,7 @@ export function IssueList({ searchQuery, onIssueClick, projectId }: IssueListPro
 
       lastMousePosition.current = { x: event.clientX, y: event.clientY }
 
-      const hasMeaningfulMovement =
-        Math.max(deltaFromStored, deltaFromEvent) >= MOVEMENT_THRESHOLD
+      const hasMeaningfulMovement = Math.max(deltaFromStored, deltaFromEvent) >= MOVEMENT_THRESHOLD
 
       // Only switch if mouse actually moved (debounce + movement threshold)
       if (
@@ -352,7 +422,8 @@ export function IssueList({ searchQuery, onIssueClick, projectId }: IssueListPro
   const columnWidthClasses: Record<string, string> = {
     priority: 'w-[120px]',
     effort: 'w-[100px]',
-    tags: 'w-[200px]',
+    title: 'flex-1 min-w-0', // Take remaining space, allow truncation
+    type: 'w-[120px]',
     status: 'w-[120px]'
   }
 
@@ -505,28 +576,30 @@ export function IssueList({ searchQuery, onIssueClick, projectId }: IssueListPro
       },
       cell: ({ row }) => {
         const issue = row.original
-        return <span className="block max-w-[420px] truncate font-medium">{issue.title}</span>
+        return <span className="block truncate font-medium">{issue.title}</span>
       }
     },
     {
-      id: 'tags',
-      accessorFn: (row) => row.tags?.join(' '),
-      header: 'Tags',
+      id: 'type',
+      accessorKey: 'issueType',
+      header: 'Type',
       cell: ({ row }) => {
         const issue = row.original
+        const typeColors: Record<IssueType, string> = {
+          bug: 'bg-red-500/10 text-red-500 border-red-500/20',
+          feature: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
+          enhancement: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+          task: 'bg-gray-500/10 text-gray-500 border-gray-500/20',
+          documentation: 'bg-green-500/10 text-green-500 border-green-500/20',
+          chore: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
+        }
+
         return (
-          <div className="flex items-center gap-1 overflow-hidden flex-nowrap">
-            {issue.tags?.slice(0, 2).map((tag) => (
-              <Badge key={tag} variant="outline" className="text-xs whitespace-nowrap px-2 py-0.5">
-                {tag}
-              </Badge>
-            ))}
-            {issue.tags && issue.tags.length > 2 && (
-              <Badge variant="outline" className="text-xs whitespace-nowrap px-2 py-0.5">
-                +{issue.tags.length - 2}
-              </Badge>
-            )}
-          </div>
+          <Badge
+            className={cn('text-xs whitespace-nowrap px-2 py-0.5', typeColors[issue.issueType])}
+          >
+            {issue.issueType}
+          </Badge>
         )
       },
       enableSorting: false
@@ -635,78 +708,152 @@ export function IssueList({ searchQuery, onIssueClick, projectId }: IssueListPro
 
   return (
     <>
+      {/* Filters Bar - only show if filters are visible */}
+      {showFilters && (
+        <div className="mb-3">
+          <div className="flex gap-2 flex-wrap">
+            {/* Type Filter */}
+            <Select
+              value={typeFilter}
+              onValueChange={(value) => setTypeFilter(value as IssueType | 'all')}
+            >
+              <SelectTrigger className="w-[150px] h-8">
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="bug">Bug</SelectItem>
+                <SelectItem value="feature">Feature</SelectItem>
+                <SelectItem value="enhancement">Enhancement</SelectItem>
+                <SelectItem value="task">Task</SelectItem>
+                <SelectItem value="documentation">Documentation</SelectItem>
+                <SelectItem value="chore">Chore</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Priority Filter */}
+            <Select
+              value={priorityFilter}
+              onValueChange={(value) => setPriorityFilter(value as IssuePriority | 'all')}
+            >
+              <SelectTrigger className="w-[150px] h-8">
+                <SelectValue placeholder="All Priorities" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Priorities</SelectItem>
+                <SelectItem value="critical">Critical</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Effort Filter */}
+            <Select
+              value={effortFilter}
+              onValueChange={(value) => setEffortFilter(value as IssueEffort | 'all')}
+            >
+              <SelectTrigger className="w-[150px] h-8">
+                <SelectValue placeholder="All Efforts" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Efforts</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Clear Filters */}
+            {(typeFilter !== 'all' || priorityFilter !== 'all' || effortFilter !== 'all') && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setTypeFilter('all')
+                  setPriorityFilter('all')
+                  setEffortFilter('all')
+                }}
+              >
+                Clear Filters
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div
         ref={setDroppableRef}
         className={cn(
-          "rounded-lg transition-colors",
-          isOver && "ring-2 ring-primary/50 bg-primary/5"
+          'rounded-lg transition-colors',
+          isOver && 'ring-2 ring-primary/50 bg-primary/5'
         )}
       >
-        <Table className="group" data-selection-mode={selectionMode}>
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id} className="hover:bg-transparent">
-                  {headerGroup.headers.map((header) => (
-                    <TableHead
-                      key={header.id}
+        <Table className="group table-fixed w-full" data-selection-mode={selectionMode}>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id} className="hover:bg-transparent">
+                {headerGroup.headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    className={cn(
+                      'h-10 px-3 text-left align-middle font-medium text-muted-foreground whitespace-nowrap',
+                      columnWidthClasses[header.column.id ?? '']
+                    )}
+                  >
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(header.column.columnDef.header, header.getContext())}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows.map((row) => {
+              const rowId = row.original.id
+              const isActive =
+                (selectionMode === 'keyboard' && keyboardSelectedId === rowId) ||
+                (selectionMode === 'mouse' && hoveredRowId === rowId)
+
+              // Show single skeleton for entire row if AI is pending
+              if (row.original._aiPending) {
+                return (
+                  <TableRow key={row.id}>
+                    <TableCell colSpan={columns.length} className="px-3 py-2">
+                      <Skeleton className="h-8 w-full" />
+                    </TableCell>
+                  </TableRow>
+                )
+              }
+
+              return (
+                <DraggableRow
+                  key={row.id}
+                  issue={row.original}
+                  isActive={isActive}
+                  onMouseEnter={() => setHoveredRowId(rowId)}
+                  onMouseLeave={() =>
+                    setHoveredRowId((current) => (current === rowId ? null : current))
+                  }
+                  onClick={() => handleRowClick(row.original)}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell
+                      key={cell.id}
                       className={cn(
-                        'h-10 px-3 text-left align-middle font-medium text-muted-foreground whitespace-nowrap',
-                        columnWidthClasses[header.column.id ?? '']
+                        'px-3 py-2 align-middle whitespace-nowrap text-sm',
+                        columnWidthClasses[cell.column.id ?? '']
                       )}
                     >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(header.column.columnDef.header, header.getContext())}
-                    </TableHead>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
                   ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows.map((row) => {
-                const rowId = row.original.id
-                const isActive =
-                  (selectionMode === 'keyboard' && keyboardSelectedId === rowId) ||
-                  (selectionMode === 'mouse' && hoveredRowId === rowId)
-
-                // Show single skeleton for entire row if AI is pending
-                if (row.original._aiPending) {
-                  return (
-                    <TableRow key={row.id}>
-                      <TableCell colSpan={columns.length} className="px-3 py-2">
-                        <Skeleton className="h-8 w-full" />
-                      </TableCell>
-                    </TableRow>
-                  )
-                }
-
-                return (
-                  <DraggableRow
-                    key={row.id}
-                    issue={row.original}
-                    isActive={isActive}
-                    onMouseEnter={() => setHoveredRowId(rowId)}
-                    onMouseLeave={() =>
-                      setHoveredRowId((current) => (current === rowId ? null : current))
-                    }
-                    onClick={() => handleRowClick(row.original)}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell
-                        key={cell.id}
-                        className={cn(
-                          'px-3 py-2 align-middle whitespace-nowrap text-sm',
-                          columnWidthClasses[cell.column.id ?? '']
-                        )}
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
-                    ))}
-                  </DraggableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
+                </DraggableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
       </div>
       <IssueDetailsModal
         issue={selectedIssue}
@@ -726,12 +873,16 @@ export function IssueList({ searchQuery, onIssueClick, projectId }: IssueListPro
         />
       )}
 
-      <AlertDialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+      <AlertDialog
+        open={!!deleteConfirmId}
+        onOpenChange={(open) => !open && setDeleteConfirmId(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the issue from your tracker.
+              This action cannot be undone. This will permanently delete the issue from your
+              tracker.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

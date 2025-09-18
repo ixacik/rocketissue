@@ -30,7 +30,11 @@ export const issues = sqliteTable('issues', {
   effort: text('effort', { enum: ['low', 'medium', 'high'] })
     .notNull()
     .default('medium'),
-  tags: text('tags', { mode: 'json' }).$type<string[]>(),
+  issueType: text('issue_type', {
+    enum: ['bug', 'feature', 'enhancement', 'task', 'documentation', 'chore']
+  })
+    .notNull()
+    .default('task'),
   projectId: integer('project_id')
     .notNull()
     .references(() => projects.id, { onDelete: 'cascade' }),

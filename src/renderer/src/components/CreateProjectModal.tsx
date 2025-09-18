@@ -31,7 +31,10 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
     e.preventDefault()
     if (!name.trim()) return
 
-    const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+    const slug = name
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '')
     const isFirstProject = projects.length === 0
 
     try {

@@ -2,7 +2,14 @@ import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { app } from 'electron'
 import { join } from 'path'
-import { issues, projects, type Issue, type NewIssue, type Project, type NewProject } from './schema'
+import {
+  issues,
+  projects,
+  type Issue,
+  type NewIssue,
+  type Project,
+  type NewProject
+} from './schema'
 import { eq, desc, like, or, and } from 'drizzle-orm'
 
 // Database path - use app data folder in production, project folder in dev
@@ -43,7 +50,7 @@ export function initDatabase(): void {
         status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open', 'in_progress', 'completed', 'closed')),
         priority TEXT NOT NULL DEFAULT 'medium' CHECK(priority IN ('low', 'medium', 'high', 'critical')),
         effort TEXT NOT NULL DEFAULT 'medium' CHECK(effort IN ('low', 'medium', 'high')),
-        tags TEXT,
+        issue_type TEXT NOT NULL DEFAULT 'task' CHECK(issue_type IN ('bug', 'feature', 'enhancement', 'task', 'documentation', 'chore')),
         project_id INTEGER NOT NULL,
         created_at INTEGER NOT NULL DEFAULT (unixepoch()),
         updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
@@ -51,6 +58,39 @@ export function initDatabase(): void {
       )
     `)
 
+    // Migration: Add issue_type column and remove tags column if they exist
+    try {
+      // First check if we need to migrate
+      const columns = sqlite.prepare('PRAGMA table_info(issues)').all() as Array<{ name: string }>
+      const hasIssueType = columns.some((col) => col.name === 'issue_type')
+      const hasTags = columns.some((col) => col.name === 'tags')
+
+      if (!hasIssueType) {
+        // Add issue_type column
+        sqlite.exec(
+          `ALTER TABLE issues ADD COLUMN issue_type TEXT NOT NULL DEFAULT 'task' CHECK(issue_type IN ('bug', 'feature', 'enhancement', 'task', 'documentation', 'chore'))`
+        )
+
+        // Migrate data from tags if it exists
+        if (hasTags) {
+          // Try to infer type from tags
+          sqlite.exec(`
+            UPDATE issues
+            SET issue_type = CASE
+              WHEN tags LIKE '%bug%' THEN 'bug'
+              WHEN tags LIKE '%feature%' THEN 'feature'
+              WHEN tags LIKE '%enhancement%' THEN 'enhancement'
+              WHEN tags LIKE '%doc%' THEN 'documentation'
+              WHEN tags LIKE '%chore%' THEN 'chore'
+              ELSE 'task'
+            END
+            WHERE tags IS NOT NULL
+          `)
+        }
+      }
+    } catch {
+      // Migration already done or not needed
+    }
 
     // Add effort column for existing databases (will fail silently if column exists)
     try {
@@ -81,7 +121,9 @@ export const issueOperations = {
   // Get issues by project
   getByProject: (projectId: number): Issue[] => {
     try {
-      return db.select().from(issues)
+      return db
+        .select()
+        .from(issues)
         .where(eq(issues.projectId, projectId))
         .orderBy(desc(issues.createdAt))
         .all()
@@ -174,7 +216,10 @@ export const projectOperations = {
   },
 
   // Update project
-  update: (id: number, updates: Partial<Omit<Project, 'id' | 'createdAt'>>): Project | undefined => {
+  update: (
+    id: number,
+    updates: Partial<Omit<Project, 'id' | 'createdAt'>>
+  ): Project | undefined => {
     const result = db
       .update(projects)
       .set({ ...updates, updatedAt: new Date() })

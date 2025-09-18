@@ -14,7 +14,11 @@ interface HeaderProps {
   activeProjectId: number | null
 }
 
-export function Header({ searchValue, onSearchChange, activeProjectId }: HeaderProps): React.JSX.Element {
+export function Header({
+  searchValue,
+  onSearchChange,
+  activeProjectId
+}: HeaderProps): React.JSX.Element {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const { data: projects = [] } = useProjects()
   const isNavigating = useIsNavigating()
@@ -54,9 +58,10 @@ export function Header({ searchValue, onSearchChange, activeProjectId }: HeaderP
                 className="w-1 h-1 rounded-full z-50"
                 initial={{ backgroundColor: 'rgba(100, 100, 100, 0.5)' }}
                 animate={{
-                  backgroundColor: project.id === activeProjectId
-                    ? 'rgba(255, 255, 255, 1)'
-                    : 'rgba(100, 100, 100, 0.5)'
+                  backgroundColor:
+                    project.id === activeProjectId
+                      ? 'rgba(255, 255, 255, 1)'
+                      : 'rgba(100, 100, 100, 0.5)'
                 }}
                 transition={{ duration: 0.15 }}
               />
@@ -66,9 +71,8 @@ export function Header({ searchValue, onSearchChange, activeProjectId }: HeaderP
               className="w-1 h-1 rounded-full z-50"
               initial={{ backgroundColor: 'rgba(100, 100, 100, 0.5)' }}
               animate={{
-                backgroundColor: activeProjectId === -1
-                  ? 'rgba(255, 255, 255, 1)'
-                  : 'rgba(100, 100, 100, 0.5)'
+                backgroundColor:
+                  activeProjectId === -1 ? 'rgba(255, 255, 255, 1)' : 'rgba(100, 100, 100, 0.5)'
               }}
               transition={{ duration: 0.15 }}
             />
@@ -100,10 +104,7 @@ export function Header({ searchValue, onSearchChange, activeProjectId }: HeaderP
             transition={{ duration: 0.15 }}
             style={{ pointerEvents: isNavigating ? 'auto' : 'none' }}
           >
-            <SpaceNavigator
-              projects={projects}
-              activeProjectId={activeProjectId}
-            />
+            <SpaceNavigator projects={projects} activeProjectId={activeProjectId} />
           </motion.div>
         </div>
 
@@ -111,7 +112,7 @@ export function Header({ searchValue, onSearchChange, activeProjectId }: HeaderP
         <Button
           onClick={() => setIsModalOpen(true)}
           className="ml-auto rounded-full bg-secondary text-white disabled:opacity-50"
-          title={canCreateIssue ? "Create new issue (Press N)" : "Select a project first"}
+          title={canCreateIssue ? 'Create new issue (Press N)' : 'Select a project first'}
           disabled={!canCreateIssue}
         >
           <Plus className="h-4 w-4" />

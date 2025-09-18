@@ -1,6 +1,7 @@
 export type IssueStatus = 'open' | 'in_progress' | 'completed' | 'closed'
 export type IssuePriority = 'low' | 'medium' | 'high' | 'critical'
 export type IssueEffort = 'low' | 'medium' | 'high'
+export type IssueType = 'bug' | 'feature' | 'enhancement' | 'task' | 'documentation' | 'chore'
 
 export interface Issue {
   id: string
@@ -9,10 +10,10 @@ export interface Issue {
   status: IssueStatus
   priority: IssuePriority
   effort: IssueEffort
+  issueType: IssueType
   projectId: number
   createdAt: Date
   updatedAt: Date
-  tags?: string[]
   // Optimistic update flags
   _isOptimistic?: boolean
   _aiPending?: boolean

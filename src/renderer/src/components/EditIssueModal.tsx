@@ -19,7 +19,7 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { useUpdateIssue } from '@/hooks/useIssues'
-import { Issue, IssueStatus, IssuePriority, IssueEffort } from '@/types/issue'
+import { Issue, IssueStatus, IssuePriority, IssueEffort, IssueType } from '@/types/issue'
 
 interface EditIssueModalProps {
   issue: Issue
@@ -35,7 +35,7 @@ export function EditIssueModal({ issue, isOpen, onClose }: EditIssueModalProps):
   const [status, setStatus] = useState<IssueStatus>(issue.status)
   const [priority, setPriority] = useState<IssuePriority>(issue.priority)
   const [effort, setEffort] = useState<IssueEffort>(issue.effort || 'medium')
-  const [tags, setTags] = useState(issue.tags?.join(', ') || '')
+  const [issueType, setIssueType] = useState<IssueType>(issue.issueType || 'task')
 
   // Reset form when issue changes
   useEffect(() => {
@@ -44,16 +44,11 @@ export function EditIssueModal({ issue, isOpen, onClose }: EditIssueModalProps):
     setStatus(issue.status)
     setPriority(issue.priority)
     setEffort(issue.effort || 'medium')
-    setTags(issue.tags?.join(', ') || '')
+    setIssueType(issue.issueType || 'task')
   }, [issue])
 
   const handleSubmit = (): void => {
     if (!title.trim()) return
-
-    const tagArray = tags
-      .split(',')
-      .map((tag) => tag.trim())
-      .filter((tag) => tag.length > 0)
 
     updateIssue.mutate({
       id: issue.id,
@@ -63,7 +58,7 @@ export function EditIssueModal({ issue, isOpen, onClose }: EditIssueModalProps):
         status,
         priority,
         effort,
-        tags: tagArray.length > 0 ? tagArray : undefined
+        issueType
       }
     })
 
@@ -110,7 +105,7 @@ export function EditIssueModal({ issue, isOpen, onClose }: EditIssueModalProps):
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="edit-status">Status</Label>
               <Select value={status} onValueChange={(value) => setStatus(value as IssueStatus)}>
@@ -126,6 +121,25 @@ export function EditIssueModal({ issue, isOpen, onClose }: EditIssueModalProps):
               </Select>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="edit-type">Type</Label>
+              <Select value={issueType} onValueChange={(value) => setIssueType(value as IssueType)}>
+                <SelectTrigger id="edit-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bug">Bug</SelectItem>
+                  <SelectItem value="feature">Feature</SelectItem>
+                  <SelectItem value="enhancement">Enhancement</SelectItem>
+                  <SelectItem value="task">Task</SelectItem>
+                  <SelectItem value="documentation">Documentation</SelectItem>
+                  <SelectItem value="chore">Chore</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="edit-priority">Priority</Label>
               <Select
@@ -157,17 +171,6 @@ export function EditIssueModal({ issue, isOpen, onClose }: EditIssueModalProps):
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="edit-tags">Tags (comma-separated)</Label>
-            <Input
-              id="edit-tags"
-              placeholder="bug, frontend, urgent"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
           </div>
         </div>
 

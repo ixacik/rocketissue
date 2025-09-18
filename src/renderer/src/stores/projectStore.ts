@@ -35,7 +35,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       if (projectId === -1 || projectId === null) {
         return state.projects.length // create_new is at the end
       }
-      return state.projects.findIndex(p => p.id === projectId)
+      return state.projects.findIndex((p) => p.id === projectId)
     }
 
     const currentIndex = getIndex(currentId)
@@ -76,26 +76,27 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 
 // Selectors (performance optimized per CLAUDE.md)
 export const useActiveProjectId = () => useProjectStore((state) => state.activeProjectId)
-export const useActiveProject = () => useProjectStore((state) =>
-  state.projects.find(p => p.id === state.activeProjectId) || null
-)
+export const useActiveProject = () =>
+  useProjectStore((state) => state.projects.find((p) => p.id === state.activeProjectId) || null)
 export const useProjects = () => useProjectStore((state) => state.projects)
 export const useSlideDirection = () => useProjectStore((state) => state.slideDirection)
 export const useIsTransitioning = () => useProjectStore((state) => state.isTransitioning)
 export const useIsNavigating = () => useProjectStore((state) => state.isNavigating)
 
 // Complex selectors
-export const useNextProject = () => useProjectStore((state) => {
-  const currentIndex = state.projects.findIndex(p => p.id === state.activeProjectId)
-  if (currentIndex === -1 || currentIndex === state.projects.length - 1) return null
-  return state.projects[currentIndex + 1]
-})
+export const useNextProject = () =>
+  useProjectStore((state) => {
+    const currentIndex = state.projects.findIndex((p) => p.id === state.activeProjectId)
+    if (currentIndex === -1 || currentIndex === state.projects.length - 1) return null
+    return state.projects[currentIndex + 1]
+  })
 
-export const usePrevProject = () => useProjectStore((state) => {
-  const currentIndex = state.projects.findIndex(p => p.id === state.activeProjectId)
-  if (currentIndex <= 0) return null
-  return state.projects[currentIndex - 1]
-})
+export const usePrevProject = () =>
+  useProjectStore((state) => {
+    const currentIndex = state.projects.findIndex((p) => p.id === state.activeProjectId)
+    if (currentIndex <= 0) return null
+    return state.projects[currentIndex - 1]
+  })
 
 // Actions selectors
 export const useSetActiveProject = () => useProjectStore((state) => state.setActiveProject)

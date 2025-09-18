@@ -7,8 +7,7 @@ const IssueAnalysisSchema = z.object({
   description: z.string(),
   priority: z.enum(['low', 'medium', 'high', 'critical']),
   effort: z.enum(['low', 'medium', 'high']),
-  tags: z.array(z.string()).max(5),
-  reasoning: z.string()
+  issueType: z.enum(['bug', 'feature', 'enhancement', 'task', 'documentation', 'chore'])
 })
 
 type IssueAnalysis = z.infer<typeof IssueAnalysisSchema>
@@ -22,9 +21,7 @@ export function initializeOpenAI(apiKey: string): void {
   })
 }
 
-export async function analyzeIssue(
-  rawInput: string
-): Promise<IssueAnalysis | null> {
+export async function analyzeIssue(rawInput: string): Promise<IssueAnalysis | null> {
   // Check if API key is configured
   if (!openai) {
     const apiKey =
@@ -47,8 +44,7 @@ export async function analyzeIssue(
 - description: clean up the user's text for clarity, but ONLY use information they provided
 - priority: critical/high/medium/low based on described impact
 - effort: low/medium/high based on described complexity
-- tags: relevant technical categories (max 5)
-- reasoning: one sentence explaining categorization
+- issueType: categorize as bug/feature/enhancement/task/documentation/chore based on the nature of the request
 
 Be concise. Do not invent details not in the input.`
         },

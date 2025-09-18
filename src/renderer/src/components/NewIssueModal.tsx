@@ -18,7 +18,11 @@ interface NewIssueModalProps {
   projectId: number | null
 }
 
-export function NewIssueModal({ isOpen, onClose, projectId }: NewIssueModalProps): React.JSX.Element {
+export function NewIssueModal({
+  isOpen,
+  onClose,
+  projectId
+}: NewIssueModalProps): React.JSX.Element {
   const createIssue = useCreateIssue()
 
   const [description, setDescription] = useState('')
@@ -52,7 +56,8 @@ export function NewIssueModal({ isOpen, onClose, projectId }: NewIssueModalProps
         <DialogHeader>
           <DialogTitle>Create New Issue</DialogTitle>
           <DialogDescription>
-            Describe what needs to be done. AI will extract a clear title and format your description for easy scanning.
+            Describe what needs to be done. AI will extract a clear title and format your
+            description for easy scanning.
           </DialogDescription>
         </DialogHeader>
 

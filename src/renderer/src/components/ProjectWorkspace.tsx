@@ -1,12 +1,14 @@
-import { ReactNode, useEffect, useState } from 'react'
+import { ReactNode, useEffect, useState, useMemo } from 'react'
 import { IssueList } from '@/components/IssueList'
 import { InProgressGallery } from '@/components/InProgressGallery'
 import { DoneDropZone } from '@/components/DoneDropZone'
 import { CreateProjectModal } from '@/components/CreateProjectModal'
-import { Issue } from '@/types/issue'
+import { Issue, IssueType, IssuePriority, IssueEffort } from '@/types/issue'
 import { Project } from '@/types/project'
-import { Plus, CircleDot } from 'lucide-react'
+import { Plus, Filter } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useSetActiveProject } from '@/stores/projectStore'
 
 interface ProjectWorkspaceProps {
@@ -21,7 +23,6 @@ interface ProjectWorkspaceProps {
 
 export function ProjectWorkspace({
   projectId,
-  project,
   issues,
   searchQuery,
   onIssueClick,
@@ -29,8 +30,28 @@ export function ProjectWorkspace({
 }: ProjectWorkspaceProps) {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const setActiveProject = useSetActiveProject()
+  // View and filter states
+  const [issueView, setIssueView] = useState<'open' | 'all'>('open')
+  const [showFilters, setShowFilters] = useState(false)
+  const [typeFilter, setTypeFilter] = useState<IssueType | 'all'>('all')
+  const [priorityFilter, setPriorityFilter] = useState<IssuePriority | 'all'>('all')
+  const [effortFilter, setEffortFilter] = useState<IssueEffort | 'all'>('all')
+
   // Filter issues for this project (always return empty array if no projectId)
-  const projectIssues = projectId ? issues.filter(i => i.projectId === projectId) : []
+  const projectIssues = projectId ? issues.filter((i) => i.projectId === projectId) : []
+
+  // Calculate counts for tabs
+  const openIssuesCount = useMemo(
+    () => projectIssues.filter((i) => i.status === 'open').length,
+    [projectIssues]
+  )
+  const allIssuesCount = projectIssues.length
+
+  // Filter issues based on view
+  const viewFilteredIssues = useMemo(
+    () => (issueView === 'open' ? projectIssues.filter((i) => i.status === 'open') : projectIssues),
+    [projectIssues, issueView]
+  )
 
   // Handle Enter key for empty project
   useEffect(() => {
@@ -61,9 +82,7 @@ export function ProjectWorkspace({
             <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
               <Plus className="h-10 w-10 text-muted-foreground" />
             </div>
-            <h2 className="text-xl font-semibold mb-2">
-              Create New Project
-            </h2>
+            <h2 className="text-xl font-semibold mb-2">Create New Project</h2>
             <p className="text-muted-foreground mb-4 max-w-sm">
               Press Enter to create a new project and start organizing your work.
             </p>
@@ -98,19 +117,55 @@ export function ProjectWorkspace({
         </div>
       </div>
 
-      {/* Bottom section: Open Issues Table */}
+      {/* Bottom section: Issues Table */}
       <div className="flex-1 flex flex-col min-h-0">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
-            <CircleDot className="h-3.5 w-3.5" />
-            Open Issues ({projectIssues.filter(i => i.status === 'open').length})
-          </h2>
+          <Tabs
+            value={issueView}
+            onValueChange={(v) => setIssueView(v as 'open' | 'all')}
+            className="h-7"
+          >
+            <TabsList className="h-7 p-0.5">
+              <TabsTrigger value="open" className="h-6 px-3 text-xs data-[state=active]:text-xs">
+                Open ({openIssuesCount})
+              </TabsTrigger>
+              <TabsTrigger value="all" className="h-6 px-3 text-xs data-[state=active]:text-xs">
+                All ({allIssuesCount})
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+            className="h-7 px-2 text-xs"
+          >
+            <Filter className="size-2.5 mr-1" />
+            Filters
+            {(typeFilter !== 'all' || priorityFilter !== 'all' || effortFilter !== 'all') && (
+              <Badge variant="secondary" className="ml-1 px-1 py-0 text-xs h-4">
+                {
+                  [typeFilter !== 'all', priorityFilter !== 'all', effortFilter !== 'all'].filter(
+                    Boolean
+                  ).length
+                }
+              </Badge>
+            )}
+          </Button>
         </div>
         <div className="flex-1 overflow-auto scrollbar-hide">
           <IssueList
             searchQuery={searchQuery}
             onIssueClick={onIssueClick}
             projectId={projectId}
+            issues={viewFilteredIssues}
+            showFilters={showFilters}
+            typeFilter={typeFilter}
+            setTypeFilter={setTypeFilter}
+            priorityFilter={priorityFilter}
+            setPriorityFilter={setPriorityFilter}
+            effortFilter={effortFilter}
+            setEffortFilter={setEffortFilter}
           />
         </div>
       </div>

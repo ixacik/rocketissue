@@ -34,9 +34,7 @@ function TableRowOverlay({ issue }: { issue: Issue }) {
   return (
     <div className="bg-background border border-border rounded-md p-2 shadow-lg opacity-90 min-w-[400px]">
       <div className="flex items-center gap-2">
-        <Badge className={cn('text-xs', priorityColors[issue.priority])}>
-          {issue.priority}
-        </Badge>
+        <Badge className={cn('text-xs', priorityColors[issue.priority])}>{issue.priority}</Badge>
         <span className="font-medium text-sm truncate flex-1">{issue.title}</span>
         <Badge className={cn('text-xs', statusBgColors[issue.status])}>
           {formatStatus(issue.status)}
@@ -50,10 +48,12 @@ export function IssueDragOverlay({ activeIssue }: IssueDragOverlayProps) {
   if (!activeIssue) return null
 
   return (
-    <DragOverlay dropAnimation={{
-      duration: 200,
-      easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)'
-    }}>
+    <DragOverlay
+      dropAnimation={{
+        duration: 200,
+        easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)'
+      }}
+    >
       {activeIssue.status === 'open' ? (
         <TableRowOverlay issue={activeIssue} />
       ) : (

@@ -22,7 +22,7 @@ export function SpaceNavigator({ projects, activeProjectId }: SpaceNavigatorProp
       // Create new space
       setActiveIndex(projects.length)
     } else {
-      const index = projects.findIndex(p => p.id === activeProjectId)
+      const index = projects.findIndex((p) => p.id === activeProjectId)
       if (index !== -1) {
         setActiveIndex(index)
       }
@@ -31,7 +31,7 @@ export function SpaceNavigator({ projects, activeProjectId }: SpaceNavigatorProp
 
   // Measure item widths after render
   useEffect(() => {
-    const widths = itemRefs.current.map(ref => ref?.offsetWidth || 0)
+    const widths = itemRefs.current.map((ref) => ref?.offsetWidth || 0)
     setItemWidths(widths)
   }, [projects])
 
@@ -67,7 +67,9 @@ export function SpaceNavigator({ projects, activeProjectId }: SpaceNavigatorProp
         {projects.map((project, index) => (
           <motion.div
             key={project.id}
-            ref={el => { itemRefs.current[index] = el }}
+            ref={(el) => {
+              itemRefs.current[index] = el
+            }}
             className="inline-block origin-center flex-shrink-0"
             initial={false}
             animate={{
@@ -84,7 +86,9 @@ export function SpaceNavigator({ projects, activeProjectId }: SpaceNavigatorProp
 
         {/* Create new space - Plus icon */}
         <motion.div
-          ref={el => { itemRefs.current[projects.length] = el }}
+          ref={(el) => {
+            itemRefs.current[projects.length] = el
+          }}
           className="inline-block origin-center flex-shrink-0"
           initial={false}
           animate={{

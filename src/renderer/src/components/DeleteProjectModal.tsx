@@ -66,8 +66,8 @@ export function DeleteProjectModal({
             Delete Project
           </DialogTitle>
           <DialogDescription>
-            This will permanently delete the project "{project.name}" and all its issues.
-            This action cannot be undone.
+            This will permanently delete the project "{project.name}" and all its issues. This
+            action cannot be undone.
           </DialogDescription>
         </DialogHeader>
 

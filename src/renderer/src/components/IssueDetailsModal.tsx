@@ -1,4 +1,4 @@
-import { Issue, IssueStatus, IssuePriority, IssueEffort } from '@/types/issue'
+import { Issue, IssueStatus, IssuePriority, IssueEffort, IssueType } from '@/types/issue'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -32,6 +32,15 @@ const effortColors: Record<IssueEffort, string> = {
   high: 'border-red-500/30 text-red-500'
 }
 
+const typeColors: Record<IssueType, string> = {
+  bug: 'bg-red-500/10 text-red-500 border-red-500/20',
+  feature: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
+  enhancement: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+  task: 'bg-gray-500/10 text-gray-500 border-gray-500/20',
+  documentation: 'bg-green-500/10 text-green-500 border-green-500/20',
+  chore: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
+}
+
 const formatStatus = (status: IssueStatus): string => {
   return status
     .split('_')
@@ -45,6 +54,10 @@ const formatPriority = (priority: IssuePriority): string => {
 
 const formatEffort = (effort: IssueEffort): string => {
   return effort.charAt(0).toUpperCase() + effort.slice(1)
+}
+
+const formatType = (type: IssueType): string => {
+  return type.charAt(0).toUpperCase() + type.slice(1)
 }
 
 const formatDate = (date: Date): string => {
@@ -84,7 +97,10 @@ export function IssueDetailsModal({
           <div className="flex items-start justify-between">
             <div className="space-y-3 flex-1">
               <h2 className="text-2xl font-semibold tracking-tight">{issue.title}</h2>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
+                <Badge className={`${typeColors[issue.issueType]} rounded-full px-3 py-1`}>
+                  {formatType(issue.issueType)}
+                </Badge>
                 <Badge className={`${statusColors[issue.status]} rounded-full px-3 py-1`}>
                   {formatStatus(issue.status)}
                 </Badge>
@@ -134,26 +150,6 @@ export function IssueDetailsModal({
                 <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">
                   {issue.description}
                 </p>
-              </div>
-            )}
-
-            {/* Tags */}
-            {issue.tags && issue.tags.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Tags
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {issue.tags.map((tag) => (
-                    <Badge
-                      key={tag}
-                      variant="secondary"
-                      className="rounded-full px-3 py-1 text-xs font-medium"
-                    >
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
               </div>
             )}
           </div>

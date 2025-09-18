@@ -45,7 +45,7 @@ export function CommandPalette(): React.JSX.Element {
   const fuse = useMemo(
     () =>
       new Fuse(issues, {
-        keys: ['title', 'description', 'tags'],
+        keys: ['title', 'description', 'issueType'],
         threshold: 0.4,
         includeScore: true
       }),
@@ -83,7 +83,7 @@ export function CommandPalette(): React.JSX.Element {
         open={open}
         onOpenChange={setOpen}
         title="Search Issues"
-        description="Search for issues by title, description, or tags"
+        description="Search for issues by title, description, or type"
       >
         <CommandInput
           placeholder="Type to search issues..."

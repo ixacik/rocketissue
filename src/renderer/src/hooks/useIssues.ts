@@ -15,7 +15,7 @@ type DbIssue = {
   status: 'open' | 'in_progress' | 'completed' | 'closed'
   priority: 'low' | 'medium' | 'high' | 'critical'
   effort: 'low' | 'medium' | 'high'
-  tags: string[] | null
+  issueType: 'bug' | 'feature' | 'enhancement' | 'task' | 'documentation' | 'chore'
   projectId: number
   createdAt: Date
   updatedAt: Date
@@ -27,10 +27,10 @@ function convertIssue(dbIssue: DbIssue): Issue {
     ...dbIssue,
     id: dbIssue.id.toString(), // Convert number ID to string for compatibility
     effort: dbIssue.effort || 'medium', // Provide default for undefined effort
+    issueType: dbIssue.issueType || 'task', // Provide default for undefined type
     projectId: dbIssue.projectId,
     createdAt: new Date(dbIssue.createdAt),
     updatedAt: new Date(dbIssue.updatedAt),
-    tags: dbIssue.tags || [],
     description: dbIssue.description || undefined
   }
 }
@@ -101,12 +101,12 @@ export function useCreateIssue(): UseMutationResult<
         status: 'open',
         priority: 'medium',
         effort: 'medium',
-        tags: [],
+        issueType: 'task',
         projectId,
         createdAt: new Date(),
         updatedAt: new Date(),
         _isOptimistic: true,
-        _aiPending: true // AI will generate title, description, priority, effort and tags
+        _aiPending: true // AI will generate title, description, priority, effort and type
       }
 
       // Update ALL issue list caches (including search queries)
@@ -165,9 +165,8 @@ export function useUpdateIssue(): UseMutationResult<
       if (updates.description !== undefined) {
         dbUpdates.description = updates.description === undefined ? null : updates.description
       }
-      if (updates.tags !== undefined) {
-        dbUpdates.tags = updates.tags && updates.tags.length > 0 ? updates.tags : null
-      }
+      if (updates.effort !== undefined) dbUpdates.effort = updates.effort
+      if (updates.issueType !== undefined) dbUpdates.issueType = updates.issueType
 
       const updated = await window.api.issues.update(parseInt(id), dbUpdates)
       return updated ? convertIssue(updated) : undefined
@@ -183,9 +182,7 @@ export function useUpdateIssue(): UseMutationResult<
       queryClient.setQueriesData<Issue[]>({ queryKey: issueKeys.all }, (old) => {
         if (!old) return old
         return old.map((issue) =>
-          issue.id === id
-            ? { ...issue, ...updates, updatedAt: new Date() }
-            : issue
+          issue.id === id ? { ...issue, ...updates, updatedAt: new Date() } : issue
         )
       })
 
@@ -253,7 +250,10 @@ export function useIssuesByProject(projectId: number | null): UseQueryResult<Iss
 }
 
 // Search issues within a project
-export function useSearchIssuesInProject(projectId: number | null, query: string): UseQueryResult<Issue[], Error> {
+export function useSearchIssuesInProject(
+  projectId: number | null,
+  query: string
+): UseQueryResult<Issue[], Error> {
   return useQuery({
     queryKey: [...issueKeys.byProject(projectId || 0), { query }],
     queryFn: async () => {

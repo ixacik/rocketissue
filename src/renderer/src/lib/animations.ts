@@ -16,7 +16,7 @@ export const slideVariants: Variants = {
 }
 
 export const slideTransition = {
-  x: { type: "tween" as const, ease: "easeOut" as const, duration: 0.2 },
+  x: { type: 'tween' as const, ease: 'easeOut' as const, duration: 0.2 },
   opacity: { duration: 0 }
 }
 

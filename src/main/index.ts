@@ -95,7 +95,7 @@ app.whenReady().then(() => {
           status: 'open',
           priority: analysis.priority,
           effort: analysis.effort,
-          tags: analysis.tags,
+          issueType: analysis.issueType || 'task',
           projectId
         } as any
       } else {
@@ -110,7 +110,7 @@ app.whenReady().then(() => {
           status: 'open',
           priority: 'medium',
           effort: 'medium',
-          tags: [],
+          issueType: 'task',
           projectId
         } as any
       }
@@ -126,7 +126,7 @@ app.whenReady().then(() => {
         status: 'open',
         priority: 'medium',
         effort: 'medium',
-        tags: [],
+        issueType: 'task',
         projectId
       } as any)
     }

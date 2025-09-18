@@ -26,15 +26,15 @@ export function DoneDropZone() {
             : 'border-border/50 hover:border-border'
         )}
       >
-        <p className={cn(
-          'text-sm font-medium transition-colors duration-200',
-          isOver ? 'text-green-600' : 'text-muted-foreground'
-        )}>
+        <p
+          className={cn(
+            'text-sm font-medium transition-colors duration-200',
+            isOver ? 'text-green-600' : 'text-muted-foreground'
+          )}
+        >
           Drop here to complete
         </p>
-        <p className="text-xs text-muted-foreground/60">
-          Issues will be marked as done
-        </p>
+        <p className="text-xs text-muted-foreground/60">Issues will be marked as done</p>
       </div>
     </div>
   )

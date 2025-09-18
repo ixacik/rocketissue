@@ -12,15 +12,16 @@ interface InProgressGalleryProps {
   onIssueClick?: (issue: Issue) => void
 }
 
-function DraggableIssueCard({ issue, onIssueClick }: { issue: Issue; onIssueClick?: (issue: Issue) => void }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging
-  } = useSortable({ id: `progress-${issue.id}` }) // Namespaced ID
+function DraggableIssueCard({
+  issue,
+  onIssueClick
+}: {
+  issue: Issue
+  onIssueClick?: (issue: Issue) => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: `progress-${issue.id}`
+  }) // Namespaced ID
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -47,7 +48,7 @@ export function InProgressGallery({ issues, onIssueClick }: InProgressGalleryPro
 
   // Filter only in_progress issues
   const inProgressIssues = useMemo(
-    () => issues.filter(issue => issue.status === 'in_progress'),
+    () => issues.filter((issue) => issue.status === 'in_progress'),
     [issues]
   )
 
@@ -72,18 +73,12 @@ export function InProgressGallery({ issues, onIssueClick }: InProgressGalleryPro
       >
         {inProgressIssues.length === 0 ? (
           <div className="text-center p-4">
-            <p className="text-sm text-muted-foreground">
-              Drag issues here to mark as in progress
-            </p>
+            <p className="text-sm text-muted-foreground">Drag issues here to mark as in progress</p>
           </div>
         ) : (
           <div className="grid gap-2 p-2 auto-rows-min grid-cols-1 lg:grid-cols-2">
             {inProgressIssues.map((issue) => (
-              <DraggableIssueCard
-                key={issue.id}
-                issue={issue}
-                onIssueClick={onIssueClick}
-              />
+              <DraggableIssueCard key={issue.id} issue={issue} onIssueClick={onIssueClick} />
             ))}
           </div>
         )}

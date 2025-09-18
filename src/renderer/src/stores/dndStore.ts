@@ -22,12 +22,13 @@ const useDndStore = create<DndState>((set) => ({
   setOverId: (id) => set({ overId: id }),
   setIsDragging: (dragging) => set({ isDragging: dragging }),
   setDraggedItem: (item) => set({ draggedItem: item }),
-  reset: () => set({
-    activeId: null,
-    overId: null,
-    isDragging: false,
-    draggedItem: null
-  })
+  reset: () =>
+    set({
+      activeId: null,
+      overId: null,
+      isDragging: false,
+      draggedItem: null
+    })
 }))
 
 // Performance-optimized selectors as per CLAUDE.md
