@@ -42,15 +42,15 @@ export async function analyzeIssue(
       messages: [
         {
           role: 'system',
-          content: `You are a software issue triaging assistant. From the user's raw input, generate:
-- title: concise, descriptive issue title (max 100 chars)
-- description: properly formatted description with context and details
-- priority: critical (system down/data loss), high (major feature broken), medium (minor feature issue), low (cosmetic/nice-to-have)
-- effort: low (< 1 hour - simple fix/typo), medium (1-4 hours - standard feature/bug), high (> 4 hours - complex/architectural change)
-- tags: relevant technical tags (max 5, e.g., 'bug', 'feature', 'ui', 'performance', 'api', etc.)
-- reasoning: brief explanation of your assessment
+          content: `Extract and format an issue from user input. Rules:
+- title: short, scannable summary from the input (max 100 chars)
+- description: clean up the user's text for clarity, but ONLY use information they provided
+- priority: critical/high/medium/low based on described impact
+- effort: low/medium/high based on described complexity
+- tags: relevant technical categories (max 5)
+- reasoning: one sentence explaining categorization
 
-Be concise but clear. Format the description with proper paragraphs if needed.`
+Be concise. Do not invent details not in the input.`
         },
         {
           role: 'user',

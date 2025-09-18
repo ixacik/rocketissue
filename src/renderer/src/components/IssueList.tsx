@@ -35,7 +35,7 @@ import {
   TableRow,
   TableCell
 } from '@/components/ui/table'
-import { ArrowUpDown, ArrowUp, ArrowDown, ClipboardList } from 'lucide-react'
+import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 
 interface IssueListProps {
   searchQuery: string
@@ -621,7 +621,6 @@ export function IssueList({ searchQuery, onIssueClick, projectId }: IssueListPro
         ref={setDroppableRef}
         className="flex flex-col items-center justify-center py-20 text-center"
       >
-        <ClipboardList className="h-16 w-16 mb-4 text-muted-foreground/30" />
         <h3 className="text-lg font-medium text-muted-foreground">
           {searchQuery ? 'No matching open issues' : 'No open issues'}
         </h3>

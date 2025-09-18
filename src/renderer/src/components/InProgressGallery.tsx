@@ -5,7 +5,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { IssueCard } from './IssueCard'
 import { Issue } from '@/types/issue'
 import { cn } from '@/lib/utils'
-import { Folder } from 'lucide-react'
+import { Clock } from 'lucide-react'
 
 interface InProgressGalleryProps {
   issues: Issue[]
@@ -56,7 +56,8 @@ export function InProgressGallery({ issues, onIssueClick }: InProgressGalleryPro
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-muted-foreground">
+        <h2 className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
+          <Clock className="h-3.5 w-3.5" />
           In Progress ({inProgressIssues.length})
         </h2>
       </div>
@@ -71,7 +72,6 @@ export function InProgressGallery({ issues, onIssueClick }: InProgressGalleryPro
       >
         {inProgressIssues.length === 0 ? (
           <div className="text-center p-4">
-            <Folder className="h-12 w-12 mx-auto mb-2 text-muted-foreground/30" />
             <p className="text-sm text-muted-foreground">
               Drag issues here to mark as in progress
             </p>

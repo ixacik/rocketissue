@@ -5,7 +5,7 @@ import { DoneDropZone } from '@/components/DoneDropZone'
 import { CreateProjectModal } from '@/components/CreateProjectModal'
 import { Issue } from '@/types/issue'
 import { Project } from '@/types/project'
-import { Plus } from 'lucide-react'
+import { Plus, CircleDot } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useSetActiveProject } from '@/stores/projectStore'
 
@@ -29,7 +29,7 @@ export function ProjectWorkspace({
 }: ProjectWorkspaceProps) {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const setActiveProject = useSetActiveProject()
-  // Filter issues for this project
+  // Filter issues for this project (always return empty array if no projectId)
   const projectIssues = projectId ? issues.filter(i => i.projectId === projectId) : []
 
   // Handle Enter key for empty project
@@ -82,31 +82,7 @@ export function ProjectWorkspace({
     )
   }
 
-  // If no project selected or no issues in project, show empty state
-  if (!projectId || projectIssues.length === 0) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl font-bold text-muted-foreground">
-              {project?.name ? project.name.charAt(0).toUpperCase() : 'P'}
-            </span>
-          </div>
-          <h2 className="text-xl font-semibold mb-2">
-            {project?.name || 'Start Your Project'}
-          </h2>
-          <p className="text-muted-foreground mb-4 max-w-sm">
-            This project is empty. Create your first issue to begin tracking your work.
-          </p>
-          <Button size="lg">
-            <Plus className="h-4 w-4 mr-2" />
-            Create First Issue
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
+  // Always show the full issue tracker UI, even with 0 issues
   return (
     <div className="flex-1 flex flex-col gap-4 overflow-hidden">
       {/* Top section: In Progress and Done zones */}
@@ -125,7 +101,8 @@ export function ProjectWorkspace({
       {/* Bottom section: Open Issues Table */}
       <div className="flex-1 flex flex-col min-h-0">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-muted-foreground">
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
+            <CircleDot className="h-3.5 w-3.5" />
             Open Issues ({projectIssues.filter(i => i.status === 'open').length})
           </h2>
         </div>

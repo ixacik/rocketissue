@@ -10,7 +10,10 @@ export function DoneDropZone() {
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-muted-foreground">Done</h2>
+        <h2 className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          Done
+        </h2>
       </div>
 
       <div
@@ -23,12 +26,6 @@ export function DoneDropZone() {
             : 'border-border/50 hover:border-border'
         )}
       >
-        <CheckCircle2
-          className={cn(
-            'h-12 w-12 transition-all duration-200',
-            isOver ? 'text-green-500 scale-110' : 'text-muted-foreground/30'
-          )}
-        />
         <p className={cn(
           'text-sm font-medium transition-colors duration-200',
           isOver ? 'text-green-600' : 'text-muted-foreground'

@@ -56,7 +56,6 @@ export function SpaceNavigator({ projects, activeProjectId }: SpaceNavigatorProp
 
   return (
     <div className="relative w-full overflow-hidden">
-      {/* Container that slides */}
       <motion.div
         className="flex items-center"
         initial={false}

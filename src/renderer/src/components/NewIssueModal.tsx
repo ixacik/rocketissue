@@ -52,7 +52,7 @@ export function NewIssueModal({ isOpen, onClose, projectId }: NewIssueModalProps
         <DialogHeader>
           <DialogTitle>Create New Issue</DialogTitle>
           <DialogDescription>
-            Describe what needs to be done. AI will automatically generate a title, format the description, and assign priority and tags.
+            Describe what needs to be done. AI will extract a clear title and format your description for easy scanning.
           </DialogDescription>
         </DialogHeader>
 
@@ -70,7 +70,7 @@ export function NewIssueModal({ isOpen, onClose, projectId }: NewIssueModalProps
               className="resize-none"
             />
             <p className="text-xs text-muted-foreground">
-              Tip: Be as descriptive as possible. AI will structure this into a proper issue.
+              Tip: Include key details. AI will create a scannable title from your description.
             </p>
           </div>
         </div>

@@ -172,9 +172,36 @@ export function useUpdateIssue(): UseMutationResult<
       const updated = await window.api.issues.update(parseInt(id), dbUpdates)
       return updated ? convertIssue(updated) : undefined
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: issueKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: issueKeys.detail(variables.id) })
+    onMutate: async ({ id, updates }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: issueKeys.all })
+
+      // Snapshot previous values
+      const previousQueries = queryClient.getQueriesData<Issue[]>({ queryKey: issueKeys.all })
+
+      // Optimistically update all caches
+      queryClient.setQueriesData<Issue[]>({ queryKey: issueKeys.all }, (old) => {
+        if (!old) return old
+        return old.map((issue) =>
+          issue.id === id
+            ? { ...issue, ...updates, updatedAt: new Date() }
+            : issue
+        )
+      })
+
+      return { previousQueries }
+    },
+    onError: (_err, _variables, context) => {
+      // Rollback on error
+      if (context?.previousQueries) {
+        context.previousQueries.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data)
+        })
+      }
+    },
+    onSuccess: () => {
+      // Invalidate all issue queries to ensure consistency
+      queryClient.invalidateQueries({ queryKey: issueKeys.all })
     }
   })
 }
