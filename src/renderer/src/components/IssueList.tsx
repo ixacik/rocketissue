@@ -276,26 +276,6 @@ export function IssueList({
     [keyboardSelectedId, onKeyboardIssueChange]
   )
 
-  useEffect(() => {
-    if (keyboardContext !== 'table') {
-      if (keyboardSelectedId !== null) {
-        setKeyboardSelectedId(null)
-      }
-      return
-    }
-
-    if (!keyboardIssueId) {
-      if (keyboardSelectedId !== null) {
-        setKeyboardSelectedId(null)
-      }
-      return
-    }
-
-    selectionModeRef.current = 'keyboard'
-    setSelectionMode((current) => (current === 'keyboard' ? current : 'keyboard'))
-    setKeyboardSelectedId((current) => (current === keyboardIssueId ? current : keyboardIssueId))
-  }, [keyboardContext, keyboardIssueId, keyboardSelectedId])
-
   // Active row is determined by current mode
   const activeRowId = selectionMode === 'mouse' ? hoveredRowId : keyboardSelectedId
 
@@ -379,111 +359,6 @@ export function IssueList({
     document.addEventListener('mousemove', handleMouseMove)
     return () => document.removeEventListener('mousemove', handleMouseMove)
   }, [switchToMouseMode])
-
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent): void => {
-      // Don't handle keyboard shortcuts when modals are open or when typing in inputs
-      if (isModalOpen || isEditModalOpen || deleteConfirmId) return
-      if (keyboardContext === 'gallery') return
-      const activeElement = document.activeElement
-      if (activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA') return
-
-      // Get the active issue based on current mode
-      const activeIssue = activeRowId ? issues.find((i) => i.id === activeRowId) : null
-      const currentIndex = activeIssue ? issues.findIndex((i) => i.id === activeRowId) : -1
-
-      switch (e.key) {
-        case 'ArrowUp':
-          e.preventDefault()
-          if (issues.length === 0) {
-            onKeyboardBoundary?.('up', null)
-            return
-          }
-
-          switchToKeyboardMode()
-          if (!activeIssue) {
-            setKeyboardSelection(issues[0].id)
-            return
-          }
-
-          if (currentIndex > 0) {
-            setKeyboardSelection(issues[currentIndex - 1].id)
-          } else {
-            onKeyboardBoundary?.('up', activeIssue.id)
-          }
-          break
-
-        case 'ArrowDown':
-          e.preventDefault()
-          if (issues.length === 0) {
-            onKeyboardBoundary?.('down', null)
-            return
-          }
-
-          switchToKeyboardMode()
-          if (!activeIssue) {
-            setKeyboardSelection(issues[0].id)
-            return
-          }
-
-          if (currentIndex < issues.length - 1) {
-            setKeyboardSelection(issues[currentIndex + 1].id)
-          } else {
-            onKeyboardBoundary?.('down', activeIssue.id)
-          }
-          break
-
-        case 'd':
-        case 'D':
-          if (activeIssue) {
-            e.preventDefault()
-            handleDelete(activeIssue.id)
-          }
-          break
-
-        case 'e':
-        case 'E':
-          if (activeIssue) {
-            e.preventDefault()
-            handleEdit(activeIssue.id)
-          }
-          break
-
-        case 't':
-        case 'T':
-          if (activeIssue) {
-            e.preventDefault()
-            cycleStatus(activeIssue)
-          }
-          break
-
-        case 'Enter':
-          if (activeIssue) {
-            e.preventDefault()
-            handleRowClick(activeIssue)
-          }
-          break
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [
-    issues,
-    activeRowId,
-    isModalOpen,
-    isEditModalOpen,
-    deleteConfirmId,
-    keyboardContext,
-    cycleStatus,
-    handleEdit,
-    handleDelete,
-    handleRowClick,
-    switchToKeyboardMode,
-    setKeyboardSelection,
-    onKeyboardBoundary
-  ])
 
   const columnWidthClasses: Record<string, string> = {
     priority: 'w-[120px]',
@@ -747,6 +622,158 @@ export function IssueList({
     maxMultiSortColCount: 3
   })
 
+  const tableRowModel = table.getRowModel()
+  const sortedIssues = useMemo(() => tableRowModel.rows.map((row) => row.original), [tableRowModel])
+  const sortedIssueIds = useMemo(() => sortedIssues.map((issue) => issue.id), [sortedIssues])
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      // Don't handle keyboard shortcuts when modals are open or when typing in inputs
+      if (isModalOpen || isEditModalOpen || deleteConfirmId) return
+      if (keyboardContext === 'gallery') return
+      const activeElement = document.activeElement
+      if (activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA') return
+
+      // Get the active issue based on current mode (respecting current sort order)
+      const currentIndex = activeRowId ? sortedIssueIds.indexOf(activeRowId) : -1
+      const activeIssue = currentIndex >= 0 ? sortedIssues[currentIndex] : null
+
+      switch (e.key) {
+        case 'ArrowUp':
+          e.preventDefault()
+          if (sortedIssues.length === 0) {
+            onKeyboardBoundary?.('up', null)
+            return
+          }
+
+          switchToKeyboardMode()
+          if (!activeIssue) {
+            setKeyboardSelection(sortedIssues[0].id)
+            return
+          }
+
+          if (currentIndex > 0) {
+            setKeyboardSelection(sortedIssues[currentIndex - 1].id)
+          } else {
+            onKeyboardBoundary?.('up', activeIssue.id)
+          }
+          break
+
+        case 'ArrowDown':
+          e.preventDefault()
+          if (sortedIssues.length === 0) {
+            onKeyboardBoundary?.('down', null)
+            return
+          }
+
+          switchToKeyboardMode()
+          if (!activeIssue) {
+            setKeyboardSelection(sortedIssues[0].id)
+            return
+          }
+
+          if (currentIndex < sortedIssues.length - 1) {
+            setKeyboardSelection(sortedIssues[currentIndex + 1].id)
+          } else {
+            onKeyboardBoundary?.('down', activeIssue.id)
+          }
+          break
+
+        case 'd':
+        case 'D':
+          if (activeIssue) {
+            e.preventDefault()
+            handleDelete(activeIssue.id)
+          }
+          break
+
+        case 'e':
+        case 'E':
+          if (activeIssue) {
+            e.preventDefault()
+            handleEdit(activeIssue.id)
+          }
+          break
+
+        case 't':
+        case 'T':
+          if (activeIssue) {
+            e.preventDefault()
+            cycleStatus(activeIssue)
+          }
+          break
+
+        case 'Enter':
+          if (activeIssue) {
+            e.preventDefault()
+            handleRowClick(activeIssue)
+          }
+          break
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [
+    activeRowId,
+    isModalOpen,
+    isEditModalOpen,
+    deleteConfirmId,
+    keyboardContext,
+    sortedIssueIds,
+    sortedIssues,
+    cycleStatus,
+    handleEdit,
+    handleDelete,
+    handleRowClick,
+    switchToKeyboardMode,
+    setKeyboardSelection,
+    onKeyboardBoundary
+  ])
+
+  useEffect(() => {
+    if (keyboardContext !== 'table') {
+      if (keyboardSelectedId !== null) {
+        setKeyboardSelectedId(null)
+      }
+      return
+    }
+
+    if (sortedIssues.length === 0) {
+      if (keyboardSelectedId !== null) {
+        setKeyboardSelectedId(null)
+      }
+      if (keyboardIssueId !== null) {
+        onKeyboardIssueChange?.(null)
+      }
+      return
+    }
+
+    const targetId =
+      keyboardIssueId && sortedIssueIds.includes(keyboardIssueId)
+        ? keyboardIssueId
+        : sortedIssues[0].id
+
+    selectionModeRef.current = 'keyboard'
+    setSelectionMode((current) => (current === 'keyboard' ? current : 'keyboard'))
+
+    if (keyboardSelectedId !== targetId) {
+      setKeyboardSelectedId(targetId)
+    }
+
+    if (targetId !== keyboardIssueId) {
+      onKeyboardIssueChange?.(targetId ?? null)
+    }
+  }, [
+    keyboardContext,
+    keyboardIssueId,
+    keyboardSelectedId,
+    onKeyboardIssueChange,
+    sortedIssueIds,
+    sortedIssues
+  ])
+
   // Setup droppable for the table - MUST be before any returns
   const { isOver, setNodeRef: setDroppableRef } = useDroppable({
     id: 'open-table'
@@ -767,8 +794,6 @@ export function IssueList({
       </div>
     )
   }
-
-  // Removed sortedIssueIds as we're not using SortableContext
 
   if (issues.length === 0) {
     return (

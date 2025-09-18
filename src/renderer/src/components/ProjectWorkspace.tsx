@@ -156,7 +156,7 @@ export function ProjectWorkspace({
           return
         }
         setKeyboardContext('table')
-        setKeyboardIssueId(viewFilteredIssues[0]?.id ?? null)
+        setKeyboardIssueId(null)
       }
     },
     [viewFilteredIssues]
