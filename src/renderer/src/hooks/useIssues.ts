@@ -72,37 +72,37 @@ export function useIssue(id: string): UseQueryResult<Issue | undefined, Error> {
 export function useCreateIssue(): UseMutationResult<
   Issue,
   Error,
-  Omit<Issue, 'id' | 'createdAt' | 'updatedAt'>
+  string // Now accepts raw input string
 > {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (issue: Omit<Issue, 'id' | 'createdAt' | 'updatedAt'>) => {
-      // Convert undefined to null for database compatibility
-      const dbIssue: Omit<DbIssue, 'id' | 'createdAt' | 'updatedAt'> = {
-        ...issue,
-        description: issue.description === undefined ? null : issue.description,
-        tags: issue.tags && issue.tags.length > 0 ? issue.tags : null
-      }
-      // Use AI-enhanced creation
-      const created = await window.api.issues.createWithAI(dbIssue)
+    mutationFn: async (rawInput: string) => {
+      // Use AI-enhanced creation with raw input
+      const created = await window.api.issues.createWithAI(rawInput)
       return convertIssue(created)
     },
-    onMutate: async (newIssue) => {
+    onMutate: async (rawInput) => {
       // Cancel any outgoing refetches to prevent overwriting optimistic update
       await queryClient.cancelQueries({ queryKey: issueKeys.all })
 
       // Snapshot the previous values for all issue queries
       const previousQueries = queryClient.getQueriesData<Issue[]>({ queryKey: issueKeys.all })
 
-      // Optimistically update with a temporary issue
+      // Create a temporary optimistic issue with placeholder values
+      const tempTitle = rawInput.split('\n')[0].substring(0, 100) || 'Processing...'
       const optimisticIssue: Issue = {
-        ...newIssue,
         id: `temp-${Date.now()}`,
+        title: tempTitle,
+        description: undefined,
+        status: 'open',
+        priority: 'medium',
+        effort: 'medium',
+        tags: [],
         createdAt: new Date(),
         updatedAt: new Date(),
         _isOptimistic: true,
-        _aiPending: true // AI will fill in priority, effort and tags
+        _aiPending: true // AI will generate title, description, priority, effort and tags
       }
 
       // Update ALL issue list caches (including search queries)

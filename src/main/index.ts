@@ -65,42 +65,55 @@ app.whenReady().then(() => {
     return issueOperations.create(issue)
   })
 
-  // AI-enhanced issue creation
+  // AI-enhanced issue creation from raw input
   ipcMain.handle(
     'issues:createWithAI',
-    async (_, issue: Omit<Issue, 'id' | 'createdAt' | 'updatedAt'>) => {
+    async (_, rawInput: string) => {
       try {
-        // Try to get AI suggestions
-        const analysis = await analyzeIssue(issue.title, issue.description || undefined)
+        // Try to get AI analysis
+        const analysis = await analyzeIssue(rawInput)
 
-        // Use AI suggestions, with fallbacks
-        const enhancedIssue = {
-          ...issue,
-          priority: analysis?.priority || 'medium', // AI first, then default
-          effort: analysis?.effort || 'medium', // AI first, then default
-          tags: analysis?.tags || [] // AI first, then empty
-        }
+        let issueData: Omit<Issue, 'id' | 'createdAt' | 'updatedAt'>
 
-        // Log AI enhancement if it happened
-        if (analysis) {
-          console.log(
-            'AI: Enhanced issue with priority:',
-            analysis.priority,
-            ', effort:',
-            analysis.effort,
-            'and tags:',
-            analysis.tags
-          )
+        if (analysis && analysis.title && analysis.description) {
+          // Use AI-generated content (only if we have title and description)
+          issueData = {
+            title: analysis.title,
+            description: analysis.description,
+            status: 'open',
+            priority: analysis.priority,
+            effort: analysis.effort,
+            tags: analysis.tags
+          }
+
+          // AI successfully generated issue
         } else {
-          console.log('AI: No analysis available, using defaults')
+          // Fallback: Use first line as title, rest as description
+          const lines = rawInput.trim().split('\n')
+          const title = lines[0].substring(0, 100) || 'New Issue'
+          const description = lines.slice(1).join('\n').trim() || lines[0]
+
+          issueData = {
+            title,
+            description,
+            status: 'open',
+            priority: 'medium',
+            effort: 'medium',
+            tags: []
+          }
+
+          // Fallback parsing: first line as title
         }
 
-        return issueOperations.create(enhancedIssue)
+        return issueOperations.create(issueData)
       } catch (error) {
         console.error('IPC: Error in issues:createWithAI:', error)
-        // Fallback to default values
+        // Emergency fallback
+        const title = rawInput.substring(0, 100) || 'New Issue'
         return issueOperations.create({
-          ...issue,
+          title,
+          description: rawInput,
+          status: 'open',
           priority: 'medium',
           effort: 'medium',
           tags: []

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import {
   useReactTable,
   getCoreRowModel,
@@ -7,12 +7,26 @@ import {
   ColumnDef,
   SortingState
 } from '@tanstack/react-table'
+import { useDroppable } from '@dnd-kit/core'
+import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { useSearchIssues, useDeleteIssue, useUpdateIssue } from '@/hooks/useIssues'
 import { IssueDetailsModal } from './IssueDetailsModal'
 import { EditIssueModal } from './EditIssueModal'
 import { Issue, IssuePriority, IssueStatus, IssueEffort } from '@/types/issue'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
+import { cn } from '@/lib/utils'
 import {
   Table,
   TableBody,
@@ -21,10 +35,11 @@ import {
   TableRow,
   TableCell
 } from '@/components/ui/table'
-import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { ArrowUpDown, ArrowUp, ArrowDown, ClipboardList } from 'lucide-react'
 
 interface IssueListProps {
   searchQuery: string
+  onIssueClick?: (issue: Issue) => void
 }
 
 const priorityOrder: Record<IssuePriority, number> = {
@@ -74,8 +89,59 @@ const formatStatus = (status: IssueStatus): string => {
     .join(' ')
 }
 
-export function IssueList({ searchQuery }: IssueListProps): React.JSX.Element {
-  const { data: issues = [], isLoading, error } = useSearchIssues(searchQuery)
+interface DraggableRowProps {
+  issue: Issue
+  isActive: boolean
+  onMouseEnter: () => void
+  onMouseLeave: () => void
+  onClick: () => void
+  children: React.ReactNode
+}
+
+function DraggableRow({ issue, isActive, onMouseEnter, onMouseLeave, onClick, children }: DraggableRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: `open-${issue.id}` }) // Namespaced ID
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition
+  }
+
+  return (
+    <TableRow
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`cursor-pointer transition-colors ${
+        issue._isOptimistic ? 'opacity-90' : ''
+      } ${isActive ? 'bg-accent' : ''} ${
+        isDragging ? 'opacity-50' : ''
+      }`}
+      data-active={isActive ? 'true' : undefined}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      onClick={onClick}
+    >
+      {children}
+    </TableRow>
+  )
+}
+
+export function IssueList({ searchQuery, onIssueClick }: IssueListProps): React.JSX.Element {
+  const { data: allIssues = [], isLoading, error } = useSearchIssues(searchQuery)
+
+  // Filter to show only open issues in the table
+  const issues = useMemo(
+    () => allIssues.filter(issue => issue.status === 'open'),
+    [allIssues]
+  )
   const deleteIssue = useDeleteIssue()
   const updateIssue = useUpdateIssue()
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null)
@@ -83,6 +149,7 @@ export function IssueList({ searchQuery }: IssueListProps): React.JSX.Element {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editingIssue, setEditingIssue] = useState<Issue | null>(null)
   const [sorting, setSorting] = useState<SortingState>([])
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
   // Unified selection state
   const [selectionMode, setSelectionMode] = useState<'keyboard' | 'mouse'>('mouse')
@@ -129,18 +196,27 @@ export function IssueList({ searchQuery }: IssueListProps): React.JSX.Element {
 
   const handleDelete = useCallback(
     (id: string) => {
-      if (confirm('Are you sure you want to delete this issue?')) {
-        deleteIssue.mutate(id)
-      }
+      setDeleteConfirmId(id)
       setIsModalOpen(false)
     },
-    [deleteIssue]
+    []
   )
 
+  const confirmDelete = useCallback(() => {
+    if (deleteConfirmId) {
+      deleteIssue.mutate(deleteConfirmId)
+      setDeleteConfirmId(null)
+    }
+  }, [deleteConfirmId, deleteIssue])
+
   const handleRowClick = useCallback((issue: Issue) => {
-    setSelectedIssue(issue)
-    setIsModalOpen(true)
-  }, [])
+    if (onIssueClick) {
+      onIssueClick(issue)
+    } else {
+      setSelectedIssue(issue)
+      setIsModalOpen(true)
+    }
+  }, [onIssueClick])
 
   // Cycle through statuses: open -> in_progress -> completed -> open
   const cycleStatus = useCallback(
@@ -267,6 +343,13 @@ export function IssueList({ searchQuery }: IssueListProps): React.JSX.Element {
     switchToKeyboardMode
   ])
 
+  const columnWidthClasses: Record<string, string> = {
+    priority: 'w-[120px]',
+    effort: 'w-[100px]',
+    tags: 'w-[200px]',
+    status: 'w-[120px]'
+  }
+
   const columns: ColumnDef<Issue>[] = [
     {
       accessorKey: 'priority',
@@ -305,13 +388,7 @@ export function IssueList({ searchQuery }: IssueListProps): React.JSX.Element {
         )
       },
       cell: ({ row }) => {
-        const issue = row.original
-        const aiPending = issue._aiPending
         const priority = row.getValue('priority') as IssuePriority
-
-        if (aiPending) {
-          return <Skeleton className="h-5 w-16" />
-        }
 
         return (
           <Badge className={`${priorityColors[priority]} font-medium capitalize`}>
@@ -368,13 +445,7 @@ export function IssueList({ searchQuery }: IssueListProps): React.JSX.Element {
         )
       },
       cell: ({ row }) => {
-        const issue = row.original
-        const aiPending = issue._aiPending
         const effort = row.getValue('effort') as IssueEffort | undefined
-
-        if (aiPending) {
-          return <Skeleton className="h-5 w-16" />
-        }
 
         // Handle undefined effort with a default
         const displayEffort = effort || 'medium'
@@ -428,14 +499,7 @@ export function IssueList({ searchQuery }: IssueListProps): React.JSX.Element {
       },
       cell: ({ row }) => {
         const issue = row.original
-        return (
-          <div>
-            <div className="font-medium">{issue.title}</div>
-            {issue.description && (
-              <div className="text-xs text-muted-foreground line-clamp-1">{issue.description}</div>
-            )}
-          </div>
-        )
+        return <span className="block max-w-[420px] truncate font-medium">{issue.title}</span>
       }
     },
     {
@@ -444,26 +508,15 @@ export function IssueList({ searchQuery }: IssueListProps): React.JSX.Element {
       header: 'Tags',
       cell: ({ row }) => {
         const issue = row.original
-        const aiPending = issue._aiPending
-
-        if (aiPending) {
-          return (
-            <div className="flex gap-1">
-              <Skeleton className="h-5 w-12" />
-              <Skeleton className="h-5 w-14" />
-            </div>
-          )
-        }
-
         return (
-          <div className="flex gap-1 flex-wrap">
+          <div className="flex items-center gap-1 overflow-hidden flex-nowrap">
             {issue.tags?.slice(0, 2).map((tag) => (
-              <Badge key={tag} variant="outline" className="text-xs">
+              <Badge key={tag} variant="outline" className="text-xs whitespace-nowrap px-2 py-0.5">
                 {tag}
               </Badge>
             ))}
             {issue.tags && issue.tags.length > 2 && (
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="outline" className="text-xs whitespace-nowrap px-2 py-0.5">
                 +{issue.tags.length - 2}
               </Badge>
             )}
@@ -533,6 +586,11 @@ export function IssueList({ searchQuery }: IssueListProps): React.JSX.Element {
     maxMultiSortColCount: 3
   })
 
+  // Setup droppable for the table - MUST be before any returns
+  const { isOver, setNodeRef: setDroppableRef } = useDroppable({
+    id: 'open-table'
+  })
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -549,17 +607,22 @@ export function IssueList({ searchQuery }: IssueListProps): React.JSX.Element {
     )
   }
 
+  // Removed sortedIssueIds as we're not using SortableContext
+
   if (issues.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="text-6xl mb-4 opacity-20">📋</div>
+      <div
+        ref={setDroppableRef}
+        className="flex flex-col items-center justify-center py-20 text-center"
+      >
+        <ClipboardList className="h-16 w-16 mb-4 text-muted-foreground/30" />
         <h3 className="text-lg font-medium text-muted-foreground">
-          {searchQuery ? 'No matching issues found' : 'No issues yet'}
+          {searchQuery ? 'No matching open issues' : 'No open issues'}
         </h3>
         <p className="text-sm text-muted-foreground mt-1">
           {searchQuery
             ? 'Try adjusting your search terms'
-            : 'Create your first issue to get started'}
+            : 'Create a new issue or drag from in-progress'}
         </p>
       </div>
     )
@@ -567,65 +630,79 @@ export function IssueList({ searchQuery }: IssueListProps): React.JSX.Element {
 
   return (
     <>
-      <Table className="group" data-selection-mode={selectionMode}>
-        <TableHeader>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id} className="hover:bg-transparent">
-              {headerGroup.headers.map((header) => (
-                <TableHead
-                  key={header.id}
-                  className={
-                    header.column.id === 'priority'
-                      ? 'w-[120px]'
-                      : header.column.id === 'effort'
-                        ? 'w-[100px]'
-                        : header.column.id === 'tags'
-                          ? 'w-[200px]'
-                          : header.column.id === 'status'
-                            ? 'w-[120px]'
-                            : ''
-                  }
-                >
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(header.column.columnDef.header, header.getContext())}
-                </TableHead>
+      <div
+        ref={setDroppableRef}
+        className={cn(
+          "rounded-lg transition-colors",
+          isOver && "ring-2 ring-primary/50 bg-primary/5"
+        )}
+      >
+        <Table className="group" data-selection-mode={selectionMode}>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id} className="hover:bg-transparent">
+                  {headerGroup.headers.map((header) => (
+                    <TableHead
+                      key={header.id}
+                      className={cn(
+                        'h-10 px-3 text-left align-middle font-medium text-muted-foreground whitespace-nowrap',
+                        columnWidthClasses[header.column.id ?? '']
+                      )}
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(header.column.columnDef.header, header.getContext())}
+                    </TableHead>
+                  ))}
+                </TableRow>
               ))}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
-          {table.getRowModel().rows.map((row) => {
-            const rowId = row.original.id
-            const isActive =
-              (selectionMode === 'keyboard' && keyboardSelectedId === rowId) ||
-              (selectionMode === 'mouse' && hoveredRowId === rowId)
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows.map((row) => {
+                const rowId = row.original.id
+                const isActive =
+                  (selectionMode === 'keyboard' && keyboardSelectedId === rowId) ||
+                  (selectionMode === 'mouse' && hoveredRowId === rowId)
 
-            return (
-              <TableRow
-                key={row.id}
-                className={`cursor-pointer transition-colors ${
-                  row.original._isOptimistic ? 'opacity-90' : ''
-                } ${isActive ? 'bg-accent' : ''}`}
-                data-active={isActive ? 'true' : undefined}
-                onMouseEnter={() => {
-                  setHoveredRowId(rowId)
-                }}
-                onMouseLeave={() =>
-                  setHoveredRowId((current) => (current === rowId ? null : current))
+                // Show single skeleton for entire row if AI is pending
+                if (row.original._aiPending) {
+                  return (
+                    <TableRow key={row.id}>
+                      <TableCell colSpan={columns.length} className="px-3 py-2">
+                        <Skeleton className="h-8 w-full" />
+                      </TableCell>
+                    </TableRow>
+                  )
                 }
-                onClick={() => handleRowClick(row.original)}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
-              </TableRow>
-            )
-          })}
-        </TableBody>
-      </Table>
+
+                return (
+                  <DraggableRow
+                    key={row.id}
+                    issue={row.original}
+                    isActive={isActive}
+                    onMouseEnter={() => setHoveredRowId(rowId)}
+                    onMouseLeave={() =>
+                      setHoveredRowId((current) => (current === rowId ? null : current))
+                    }
+                    onClick={() => handleRowClick(row.original)}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell
+                        key={cell.id}
+                        className={cn(
+                          'px-3 py-2 align-middle whitespace-nowrap text-sm',
+                          columnWidthClasses[cell.column.id ?? '']
+                        )}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </DraggableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+      </div>
       <IssueDetailsModal
         issue={selectedIssue}
         isOpen={isModalOpen}
@@ -643,6 +720,21 @@ export function IssueList({ searchQuery }: IssueListProps): React.JSX.Element {
           }}
         />
       )}
+
+      <AlertDialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the issue from your tracker.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteConfirmId(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Delete Issue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

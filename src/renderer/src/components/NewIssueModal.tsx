@@ -8,7 +8,6 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useCreateIssue } from '@/hooks/useIssues'
@@ -21,29 +20,20 @@ interface NewIssueModalProps {
 export function NewIssueModal({ isOpen, onClose }: NewIssueModalProps): React.JSX.Element {
   const createIssue = useCreateIssue()
 
-  const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
 
   // Reset form when modal opens
-  if (isOpen && !title && !description) {
+  if (isOpen && !description) {
     // Form is already empty, good to go
   }
 
   const handleSubmit = (): void => {
-    if (!title.trim()) return
+    if (!description.trim()) return
 
-    // Fire the mutation
-    createIssue.mutate({
-      title: title.trim(),
-      description: description.trim() || undefined,
-      status: 'open', // New issues always start as open
-      priority: 'medium', // Temporary, will be replaced by AI
-      effort: 'medium', // Temporary, will be replaced by AI
-      tags: [] // Temporary, will be replaced by AI
-    })
+    // Fire the mutation with raw input
+    createIssue.mutate(description.trim())
 
     // Close modal immediately (optimistic UI)
-    setTitle('')
     setDescription('')
     onClose()
   }
@@ -61,33 +51,26 @@ export function NewIssueModal({ isOpen, onClose }: NewIssueModalProps): React.JS
         <DialogHeader>
           <DialogTitle>Create New Issue</DialogTitle>
           <DialogDescription>
-            Describe your issue and AI will automatically assign priority and tags.
+            Describe what needs to be done. AI will automatically generate a title, format the description, and assign priority and tags.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
+        <div className="py-4">
           <div className="space-y-2">
-            <Label htmlFor="title">Title</Label>
-            <Input
-              id="title"
-              placeholder="Brief description of the issue"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onKeyDown={handleKeyDown}
-              autoFocus
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">What needs to be done?</Label>
             <Textarea
               id="description"
-              placeholder="Provide more details about the issue (optional)"
-              rows={4}
+              placeholder="Describe the issue, bug, or feature request..."
+              rows={6}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               onKeyDown={handleKeyDown}
+              autoFocus
+              className="resize-none"
             />
+            <p className="text-xs text-muted-foreground">
+              Tip: Be as descriptive as possible. AI will structure this into a proper issue.
+            </p>
           </div>
         </div>
 
@@ -95,7 +78,7 @@ export function NewIssueModal({ isOpen, onClose }: NewIssueModalProps): React.JS
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={!title.trim()}>
+          <Button onClick={handleSubmit} disabled={!description.trim()}>
             Create Issue (⌘↵)
           </Button>
         </DialogFooter>

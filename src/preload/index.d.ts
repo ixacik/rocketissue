@@ -5,7 +5,7 @@ interface IssuesAPI {
   getAll: () => Promise<Issue[]>
   getById: (id: number) => Promise<Issue | undefined>
   create: (issue: Omit<Issue, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Issue>
-  createWithAI: (issue: Omit<Issue, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Issue>
+  createWithAI: (rawInput: string) => Promise<Issue>
   update: (
     id: number,
     updates: Partial<Omit<Issue, 'id' | 'createdAt'>>

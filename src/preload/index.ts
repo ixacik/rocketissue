@@ -9,8 +9,8 @@ const api = {
     getById: (id: number) => ipcRenderer.invoke('issues:getById', id),
     create: (issue: Omit<Issue, 'id' | 'createdAt' | 'updatedAt'>) =>
       ipcRenderer.invoke('issues:create', issue),
-    createWithAI: (issue: Omit<Issue, 'id' | 'createdAt' | 'updatedAt'>) =>
-      ipcRenderer.invoke('issues:createWithAI', issue),
+    createWithAI: (rawInput: string) =>
+      ipcRenderer.invoke('issues:createWithAI', rawInput),
     update: (id: number, updates: Partial<Omit<Issue, 'id' | 'createdAt'>>) =>
       ipcRenderer.invoke('issues:update', id, updates),
     delete: (id: number) => ipcRenderer.invoke('issues:delete', id),
