@@ -1,5 +1,6 @@
 export type IssueStatus = 'open' | 'in_progress' | 'completed' | 'closed'
 export type IssuePriority = 'low' | 'medium' | 'high' | 'critical'
+export type IssueEffort = 'low' | 'medium' | 'high'
 
 export interface Issue {
   id: string
@@ -7,6 +8,7 @@ export interface Issue {
   description?: string
   status: IssueStatus
   priority: IssuePriority
+  effort: IssueEffort
   createdAt: Date
   updatedAt: Date
   tags?: string[]

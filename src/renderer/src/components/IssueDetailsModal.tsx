@@ -1,11 +1,5 @@
-import { Issue, IssueStatus, IssuePriority } from '@/types/issue'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
+import { Issue, IssueStatus, IssuePriority, IssueEffort } from '@/types/issue'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Calendar, Clock, Edit, Trash2 } from 'lucide-react'
@@ -19,17 +13,23 @@ interface IssueDetailsModalProps {
 }
 
 const statusColors: Record<IssueStatus, string> = {
-  open: 'bg-blue-100 text-blue-700',
-  in_progress: 'bg-yellow-100 text-yellow-700',
-  completed: 'bg-green-100 text-green-700',
-  closed: 'bg-gray-100 text-gray-700'
+  open: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+  in_progress: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
+  completed: 'bg-green-500/10 text-green-500 border-green-500/20',
+  closed: 'bg-gray-500/10 text-gray-500 border-gray-500/20'
 }
 
 const priorityColors: Record<IssuePriority, string> = {
-  low: 'bg-gray-100 text-gray-700',
-  medium: 'bg-blue-100 text-blue-700',
-  high: 'bg-orange-100 text-orange-700',
-  critical: 'bg-red-100 text-red-700'
+  low: 'border-gray-500/30 text-gray-500',
+  medium: 'border-blue-500/30 text-blue-500',
+  high: 'border-orange-500/30 text-orange-500',
+  critical: 'border-red-500/30 text-red-500'
+}
+
+const effortColors: Record<IssueEffort, string> = {
+  low: 'border-green-500/30 text-green-500',
+  medium: 'border-yellow-500/30 text-yellow-500',
+  high: 'border-red-500/30 text-red-500'
 }
 
 const formatStatus = (status: IssueStatus): string => {
@@ -41,6 +41,10 @@ const formatStatus = (status: IssueStatus): string => {
 
 const formatPriority = (priority: IssuePriority): string => {
   return priority.charAt(0).toUpperCase() + priority.slice(1)
+}
+
+const formatEffort = (effort: IssueEffort): string => {
+  return effort.charAt(0).toUpperCase() + effort.slice(1)
 }
 
 const formatDate = (date: Date): string => {
@@ -89,6 +93,12 @@ export function IssueDetailsModal({
                   variant="outline"
                 >
                   {formatPriority(issue.priority)} Priority
+                </Badge>
+                <Badge
+                  className={`${effortColors[issue.effort || 'medium']} rounded-full px-3 py-1`}
+                  variant="outline"
+                >
+                  {formatEffort(issue.effort || 'medium')} Effort
                 </Badge>
               </div>
             </div>

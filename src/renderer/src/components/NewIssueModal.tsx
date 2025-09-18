@@ -38,6 +38,7 @@ export function NewIssueModal({ isOpen, onClose }: NewIssueModalProps): React.JS
       description: description.trim() || undefined,
       status: 'open', // New issues always start as open
       priority: 'medium', // Temporary, will be replaced by AI
+      effort: 'medium', // Temporary, will be replaced by AI
       tags: [] // Temporary, will be replaced by AI
     })
 
@@ -48,7 +49,7 @@ export function NewIssueModal({ isOpen, onClose }: NewIssueModalProps): React.JS
   }
 
   const handleKeyDown = (e: React.KeyboardEvent): void => {
-    if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
       handleSubmit()
     }
@@ -95,7 +96,7 @@ export function NewIssueModal({ isOpen, onClose }: NewIssueModalProps): React.JS
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={!title.trim()}>
-            Create Issue (↵)
+            Create Issue (⌘↵)
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -11,6 +11,9 @@ export const issues = sqliteTable('issues', {
   priority: text('priority', { enum: ['low', 'medium', 'high', 'critical'] })
     .notNull()
     .default('medium'),
+  effort: text('effort', { enum: ['low', 'medium', 'high'] })
+    .notNull()
+    .default('medium'),
   tags: text('tags', { mode: 'json' }).$type<string[]>(),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()

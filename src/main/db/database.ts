@@ -28,11 +28,21 @@ export function initDatabase(): void {
         description TEXT,
         status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open', 'in_progress', 'completed', 'closed')),
         priority TEXT NOT NULL DEFAULT 'medium' CHECK(priority IN ('low', 'medium', 'high', 'critical')),
+        effort TEXT NOT NULL DEFAULT 'medium' CHECK(effort IN ('low', 'medium', 'high')),
         tags TEXT,
         created_at INTEGER NOT NULL DEFAULT (unixepoch()),
         updated_at INTEGER NOT NULL DEFAULT (unixepoch())
       )
     `)
+
+    // Add effort column for existing databases (will fail silently if column exists)
+    try {
+      sqlite.exec(
+        `ALTER TABLE issues ADD COLUMN effort TEXT NOT NULL DEFAULT 'medium' CHECK(effort IN ('low', 'medium', 'high'))`
+      )
+    } catch {
+      // Column already exists, ignore
+    }
   } catch (error) {
     console.error('Database: Error initializing database:', error)
     throw error

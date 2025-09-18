@@ -77,6 +77,7 @@ app.whenReady().then(() => {
         const enhancedIssue = {
           ...issue,
           priority: analysis?.priority || 'medium', // AI first, then default
+          effort: analysis?.effort || 'medium', // AI first, then default
           tags: analysis?.tags || [] // AI first, then empty
         }
 
@@ -85,6 +86,8 @@ app.whenReady().then(() => {
           console.log(
             'AI: Enhanced issue with priority:',
             analysis.priority,
+            ', effort:',
+            analysis.effort,
             'and tags:',
             analysis.tags
           )
@@ -99,6 +102,7 @@ app.whenReady().then(() => {
         return issueOperations.create({
           ...issue,
           priority: 'medium',
+          effort: 'medium',
           tags: []
         })
       }

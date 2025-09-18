@@ -4,6 +4,7 @@ import { z } from 'zod'
 // Schema for AI response
 const IssueAnalysisSchema = z.object({
   priority: z.enum(['low', 'medium', 'high', 'critical']),
+  effort: z.enum(['low', 'medium', 'high']),
   tags: z.array(z.string()).max(5),
   reasoning: z.string()
 })
@@ -40,7 +41,11 @@ export async function analyzeIssue(
       messages: [
         {
           role: 'system',
-          content: `You are a software issue triaging assistant. Analyze the issue and provide a classification.`
+          content: `You are a software issue triaging assistant. Analyze the issue and provide:
+- priority: critical (system down/data loss), high (major feature broken), medium (minor feature issue), low (cosmetic/nice-to-have)
+- effort: low (< 1 hour - simple fix/typo), medium (1-4 hours - standard feature/bug), high (> 4 hours - complex/architectural change)
+- tags: relevant technical tags (max 5)
+- reasoning: brief explanation of your assessment`
         },
         {
           role: 'user',
@@ -56,6 +61,8 @@ export async function analyzeIssue(
         }
       }
     })
+
+    console.log(completion)
 
     // Get the parsed result directly
     const result = completion.choices[0]?.message?.parsed

@@ -14,6 +14,7 @@ type DbIssue = {
   description: string | null
   status: 'open' | 'in_progress' | 'completed' | 'closed'
   priority: 'low' | 'medium' | 'high' | 'critical'
+  effort: 'low' | 'medium' | 'high'
   tags: string[] | null
   createdAt: Date
   updatedAt: Date
@@ -24,6 +25,7 @@ function convertIssue(dbIssue: DbIssue): Issue {
   return {
     ...dbIssue,
     id: dbIssue.id.toString(), // Convert number ID to string for compatibility
+    effort: dbIssue.effort || 'medium', // Provide default for undefined effort
     createdAt: new Date(dbIssue.createdAt),
     updatedAt: new Date(dbIssue.updatedAt),
     tags: dbIssue.tags || [],
@@ -100,7 +102,7 @@ export function useCreateIssue(): UseMutationResult<
         createdAt: new Date(),
         updatedAt: new Date(),
         _isOptimistic: true,
-        _aiPending: true // AI will fill in priority and tags
+        _aiPending: true // AI will fill in priority, effort and tags
       }
 
       // Update ALL issue list caches (including search queries)
