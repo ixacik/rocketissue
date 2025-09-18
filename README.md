@@ -1,5 +1,5 @@
 # RocketIssue - (Work In Progress)
-Fully keyboard-centric solo developer focused issue tracker. Built for maximum speed and to fill my need for a proper issue tracker for building https://www.loadline.app
+Fully keyboard-centric solo developer focused issue tracker. Built for maximum speed and to fill my need for an ultra-fast, zero cognitive overhead issue tracker for building https://www.loadline.app
 
 <img width="1132" height="912" alt="image" src="https://github.com/user-attachments/assets/7632a1d9-4d74-4d42-958e-8bcb88226c6b" />
 
