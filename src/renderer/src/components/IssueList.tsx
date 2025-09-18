@@ -607,6 +607,7 @@ export function IssueList({ searchQuery }: IssueListProps): React.JSX.Element {
                 className={`cursor-pointer transition-colors ${
                   row.original._isOptimistic ? 'opacity-90' : ''
                 } ${isActive ? 'bg-accent' : ''}`}
+                data-active={isActive ? 'true' : undefined}
                 onMouseEnter={() => {
                   setHoveredRowId(rowId)
                 }}
