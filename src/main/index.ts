@@ -13,6 +13,7 @@ function createWindow(): void {
     height: 670,
     show: false,
     autoHideMenuBar: true,
+    titleBarStyle: 'hidden', // Use compact traffic lights
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -75,64 +76,61 @@ app.whenReady().then(() => {
   })
 
   // AI-enhanced issue creation from raw input - now requires projectId
-  ipcMain.handle(
-    'issues:createWithAI',
-    async (_, rawInput: string, projectId: number) => {
-      if (!projectId) {
-        throw new Error('projectId is required to create an issue')
-      }
+  ipcMain.handle('issues:createWithAI', async (_, rawInput: string, projectId: number) => {
+    if (!projectId) {
+      throw new Error('projectId is required to create an issue')
+    }
 
-      try {
-        // Try to get AI analysis
-        const analysis = await analyzeIssue(rawInput)
+    try {
+      // Try to get AI analysis
+      const analysis = await analyzeIssue(rawInput)
 
-        let issueData: Omit<Issue, 'id' | 'createdAt' | 'updatedAt'>
+      let issueData: Omit<Issue, 'id' | 'createdAt' | 'updatedAt'>
 
-        if (analysis && analysis.title && analysis.description) {
-          // Use AI-generated content (only if we have title and description)
-          issueData = {
-            title: analysis.title,
-            description: analysis.description,
-            status: 'open',
-            priority: analysis.priority,
-            effort: analysis.effort,
-            tags: analysis.tags,
-            projectId
-          } as any
-        } else {
-          // Fallback: Use first line as title, rest as description
-          const lines = rawInput.trim().split('\n')
-          const title = lines[0].substring(0, 100) || 'New Issue'
-          const description = lines.slice(1).join('\n').trim() || lines[0]
+      if (analysis && analysis.title && analysis.description) {
+        // Use AI-generated content (only if we have title and description)
+        issueData = {
+          title: analysis.title,
+          description: analysis.description,
+          status: 'open',
+          priority: analysis.priority,
+          effort: analysis.effort,
+          tags: analysis.tags,
+          projectId
+        } as any
+      } else {
+        // Fallback: Use first line as title, rest as description
+        const lines = rawInput.trim().split('\n')
+        const title = lines[0].substring(0, 100) || 'New Issue'
+        const description = lines.slice(1).join('\n').trim() || lines[0]
 
-          issueData = {
-            title,
-            description,
-            status: 'open',
-            priority: 'medium',
-            effort: 'medium',
-            tags: [],
-            projectId
-          } as any
-        }
-
-        return issueOperations.create(issueData)
-      } catch (error) {
-        console.error('IPC: Error in issues:createWithAI:', error)
-        // Emergency fallback
-        const title = rawInput.substring(0, 100) || 'New Issue'
-        return issueOperations.create({
+        issueData = {
           title,
-          description: rawInput,
+          description,
           status: 'open',
           priority: 'medium',
           effort: 'medium',
           tags: [],
           projectId
-        } as any)
+        } as any
       }
+
+      return issueOperations.create(issueData)
+    } catch (error) {
+      console.error('IPC: Error in issues:createWithAI:', error)
+      // Emergency fallback
+      const title = rawInput.substring(0, 100) || 'New Issue'
+      return issueOperations.create({
+        title,
+        description: rawInput,
+        status: 'open',
+        priority: 'medium',
+        effort: 'medium',
+        tags: [],
+        projectId
+      } as any)
     }
-  )
+  })
 
   ipcMain.handle(
     'issues:update',
@@ -167,18 +165,23 @@ app.whenReady().then(() => {
     return projectOperations.getById(id)
   })
 
-  ipcMain.handle('projects:create', (_, project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => {
-    return projectOperations.create(project)
-  })
+  ipcMain.handle(
+    'projects:create',
+    (_, project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => {
+      return projectOperations.create(project)
+    }
+  )
 
-  ipcMain.handle('projects:update', (_, id: number, updates: Partial<Omit<Project, 'id' | 'createdAt'>>) => {
-    return projectOperations.update(id, updates)
-  })
+  ipcMain.handle(
+    'projects:update',
+    (_, id: number, updates: Partial<Omit<Project, 'id' | 'createdAt'>>) => {
+      return projectOperations.update(id, updates)
+    }
+  )
 
   ipcMain.handle('projects:delete', (_, id: number) => {
     return projectOperations.delete(id)
   })
-
 
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')

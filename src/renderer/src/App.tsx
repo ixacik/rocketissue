@@ -13,9 +13,7 @@ import {
   useSensors,
   CollisionDetection
 } from '@dnd-kit/core'
-import {
-  sortableKeyboardCoordinates
-} from '@dnd-kit/sortable'
+import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { ProjectWorkspace } from '@/components/ProjectWorkspace'
 import { IssueDragOverlay } from '@/components/IssueDragOverlay'
 import { IssueDetailsModal } from '@/components/IssueDetailsModal'
@@ -75,7 +73,7 @@ function App(): React.JSX.Element {
 
   // Find the active issue being dragged
   const activeIssue = useMemo(
-    () => (activeId ? issues.find(i => i.id === activeId) ?? null : null),
+    () => (activeId ? (issues.find((i) => i.id === activeId) ?? null) : null),
     [activeId, issues]
   )
 
@@ -84,8 +82,8 @@ function App(): React.JSX.Element {
     // First, check if pointer is over a droppable container
     const pointerCollisions = pointerWithin({
       ...args,
-      droppableContainers: args.droppableContainers.filter(
-        ({ id }) => ['done', 'open-table', 'in-progress'].includes(id as string)
+      droppableContainers: args.droppableContainers.filter(({ id }) =>
+        ['done', 'open-table', 'in-progress'].includes(id as string)
       )
     })
 
@@ -132,11 +130,12 @@ function App(): React.JSX.Element {
     if (activeProjectId === -1) {
       return projects.length // create_new is at the end
     }
-    return projects.findIndex(p => p.id === activeProjectId)
+    return projects.findIndex((p) => p.id === activeProjectId)
   }
 
   const currentIndex = getCurrentIndex()
-  const currentProject = activeProjectId === -1 ? null : projects.find(p => p.id === activeProjectId) || null
+  const currentProject =
+    activeProjectId === -1 ? null : projects.find((p) => p.id === activeProjectId) || null
   const isEmptyProject = activeProjectId === -1
 
   // Separate effect for auto-hiding navigator after timeout
@@ -235,74 +234,77 @@ function App(): React.JSX.Element {
     [issues]
   )
 
-  const handleDelete = useCallback(
-    (_id: string) => {
-      // This would be handled by the details modal
-      setIsDetailsModalOpen(false)
+  const handleDelete = useCallback((_id: string) => {
+    // This would be handled by the details modal
+    setIsDetailsModalOpen(false)
+  }, [])
+
+  const handleDragStart = useCallback(
+    (event: DragStartEvent) => {
+      const { active } = event
+      const activeIdStr = active.id as string
+
+      // Extract the real issue ID from namespaced ID (e.g., 'open-123' -> '123')
+      const issueId = activeIdStr.replace(/^(open|progress)-/, '')
+      const draggedIssue = issues.find((i) => i.id === issueId)
+
+      if (draggedIssue) {
+        setActiveId(issueId) // Store the clean ID
+        setDraggedItem(draggedIssue)
+        setIsDragging(true)
+      }
     },
-    []
+    [issues, setActiveId, setDraggedItem, setIsDragging]
   )
-
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-    const { active } = event
-    const activeIdStr = active.id as string
-
-    // Extract the real issue ID from namespaced ID (e.g., 'open-123' -> '123')
-    const issueId = activeIdStr.replace(/^(open|progress)-/, '')
-    const draggedIssue = issues.find(i => i.id === issueId)
-
-    if (draggedIssue) {
-      setActiveId(issueId) // Store the clean ID
-      setDraggedItem(draggedIssue)
-      setIsDragging(true)
-    }
-  }, [issues, setActiveId, setDraggedItem, setIsDragging])
 
   const handleDragOver = useCallback((_event: DragOverEvent) => {
     // Could add visual feedback here if needed
   }, [])
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event
 
-    if (!over || !activeIssue) {
-      resetDnd()
-      return
-    }
-
-    const overId = over.id as string
-    const activeIdStr = active.id as string
-    // Extract the real issue ID from namespaced ID
-    const activeIssueId = activeIdStr.replace(/^(open|progress)-/, '')
-
-    // Determine the new status based on the drop zone
-    let newStatus: Issue['status'] | null = null
-
-    if (overId === 'open-table') {
-      newStatus = 'open'
-    } else if (overId === 'in-progress') {
-      newStatus = 'in_progress'
-    } else if (overId === 'done') {
-      newStatus = 'completed'
-    } else if (overId.startsWith('open-') || overId.startsWith('progress-')) {
-      // Dropped on another issue, determine container by its prefix
-      if (overId.startsWith('open-')) {
-        newStatus = 'open'
-      } else if (overId.startsWith('progress-')) {
-        newStatus = 'in_progress'
+      if (!over || !activeIssue) {
+        resetDnd()
+        return
       }
-    }
 
-    // Update the issue status if it changed
-    if (newStatus && newStatus !== activeIssue.status) {
-      updateIssue.mutate({
-        id: activeIssueId,
-        updates: { status: newStatus }
-      })
-    }
+      const overId = over.id as string
+      const activeIdStr = active.id as string
+      // Extract the real issue ID from namespaced ID
+      const activeIssueId = activeIdStr.replace(/^(open|progress)-/, '')
 
-    resetDnd()
-  }, [activeIssue, updateIssue, resetDnd])
+      // Determine the new status based on the drop zone
+      let newStatus: Issue['status'] | null = null
+
+      if (overId === 'open-table') {
+        newStatus = 'open'
+      } else if (overId === 'in-progress') {
+        newStatus = 'in_progress'
+      } else if (overId === 'done') {
+        newStatus = 'completed'
+      } else if (overId.startsWith('open-') || overId.startsWith('progress-')) {
+        // Dropped on another issue, determine container by its prefix
+        if (overId.startsWith('open-')) {
+          newStatus = 'open'
+        } else if (overId.startsWith('progress-')) {
+          newStatus = 'in_progress'
+        }
+      }
+
+      // Update the issue status if it changed
+      if (newStatus && newStatus !== activeIssue.status) {
+        updateIssue.mutate({
+          id: activeIssueId,
+          updates: { status: newStatus }
+        })
+      }
+
+      resetDnd()
+    },
+    [activeIssue, updateIssue, resetDnd]
+  )
 
   const handleDragCancel = useCallback(() => {
     resetDnd()
@@ -318,6 +320,18 @@ function App(): React.JSX.Element {
       onDragCancel={handleDragCancel}
     >
       <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
+        {/* Custom titlebar - draggable area */}
+        <div
+          className="h-[26px] bg-muted/50 select-none text-foreground/50 text-xs flex justify-center items-center"
+          style={
+            {
+              WebkitAppRegion: 'drag'
+            } as React.CSSProperties
+          }
+        >
+          {currentProject ? `RocketIssue - ${currentProject.name}` : `RocketIssue`}
+        </div>
+
         {/* Header - static, outside animation */}
         <div className="flex-shrink-0 p-4 pb-2">
           <Header
@@ -388,7 +402,7 @@ function App(): React.JSX.Element {
           onDeleted={() => {
             // After deletion, move to first project or create new
             if (projects.length > 1) {
-              const remainingProjects = projects.filter(p => p.id !== currentProject?.id)
+              const remainingProjects = projects.filter((p) => p.id !== currentProject?.id)
               if (remainingProjects.length > 0) {
                 setActiveProject(remainingProjects[0].id)
               }
