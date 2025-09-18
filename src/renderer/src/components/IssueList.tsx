@@ -4,8 +4,7 @@ import {
   getCoreRowModel,
   getSortedRowModel,
   flexRender,
-  ColumnDef,
-  SortingState
+  ColumnDef
 } from '@tanstack/react-table'
 import { useDroppable } from '@dnd-kit/core'
 import { useSortable } from '@dnd-kit/sortable'
@@ -49,6 +48,7 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
+import { useSorting, useSetSorting } from '@/stores/sortStore'
 
 interface IssueListProps {
   searchQuery: string
@@ -203,7 +203,8 @@ export function IssueList({
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editingIssue, setEditingIssue] = useState<Issue | null>(null)
-  const [sorting, setSorting] = useState<SortingState>([])
+  const sorting = useSorting()
+  const setSorting = useSetSorting()
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
   // Filter states - use external props if provided, otherwise use local state
@@ -505,6 +506,10 @@ export function IssueList({
               const isMultiSort = e.shiftKey || e.metaKey
               column.toggleSorting(column.getIsSorted() === 'asc', isMultiSort)
             }}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              column.clearSorting()
+            }}
             title="Click to sort, Shift+Click to add multi-sort"
           >
             Priority
@@ -562,6 +567,10 @@ export function IssueList({
               const isMultiSort = e.shiftKey || e.metaKey
               column.toggleSorting(column.getIsSorted() === 'asc', isMultiSort)
             }}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              column.clearSorting()
+            }}
             title="Click to sort, Shift+Click to add multi-sort"
           >
             Effort
@@ -614,6 +623,10 @@ export function IssueList({
             onClick={(e) => {
               const isMultiSort = e.shiftKey || e.metaKey
               column.toggleSorting(column.getIsSorted() === 'asc', isMultiSort)
+            }}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              column.clearSorting()
             }}
             title="Click to sort, Shift+Click to add multi-sort"
           >
@@ -680,6 +693,10 @@ export function IssueList({
             onClick={(e) => {
               const isMultiSort = e.shiftKey || e.metaKey
               column.toggleSorting(column.getIsSorted() === 'asc', isMultiSort)
+            }}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              column.clearSorting()
             }}
             title="Click to sort, Shift+Click to add multi-sort"
           >
@@ -757,7 +774,10 @@ export function IssueList({
     return (
       <div
         ref={setDroppableRef}
-        className="flex flex-col items-center justify-center py-20 text-center"
+        className={cn(
+          'flex flex-col items-center justify-center py-20 text-center rounded-lg border-2 border-transparent transition-colors',
+          isOver && 'border-primary/60 bg-primary/5'
+        )}
       >
         <h3 className="text-lg font-medium text-muted-foreground">
           {searchQuery ? 'No matching open issues' : 'No open issues'}
@@ -850,8 +870,8 @@ export function IssueList({
       <div
         ref={setDroppableRef}
         className={cn(
-          'rounded-lg transition-colors',
-          isOver && 'ring-2 ring-primary/50 bg-primary/5'
+          'rounded-lg transition-colors border-2 border-transparent',
+          isOver && 'border-primary/60 bg-primary/5'
         )}
       >
         <Table className="group table-fixed w-full" data-selection-mode={selectionMode}>

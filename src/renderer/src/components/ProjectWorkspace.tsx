@@ -184,7 +184,7 @@ export function ProjectWorkspace({
 
   // Always show the full issue tracker UI, even with 0 issues
   return (
-    <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+    <div className="flex-1 flex flex-col gap-4 overflow-visible">
       {/* Top section: In Progress and Done zones */}
       <div className="flex gap-4 h-[35%] min-h-[200px]">
         {/* In-Progress Gallery (70% of top section) */}
