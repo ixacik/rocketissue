@@ -10,7 +10,7 @@ import {
 import { useDroppable } from '@dnd-kit/core'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useSearchIssues, useDeleteIssue, useUpdateIssue } from '@/hooks/useIssues'
+import { useSearchIssues, useDeleteIssue, useUpdateIssue, useSearchIssuesInProject } from '@/hooks/useIssues'
 import { IssueDetailsModal } from './IssueDetailsModal'
 import { EditIssueModal } from './EditIssueModal'
 import { Issue, IssuePriority, IssueStatus, IssueEffort } from '@/types/issue'
@@ -40,6 +40,7 @@ import { ArrowUpDown, ArrowUp, ArrowDown, ClipboardList } from 'lucide-react'
 interface IssueListProps {
   searchQuery: string
   onIssueClick?: (issue: Issue) => void
+  projectId?: number | null
 }
 
 const priorityOrder: Record<IssuePriority, number> = {
@@ -134,8 +135,13 @@ function DraggableRow({ issue, isActive, onMouseEnter, onMouseLeave, onClick, ch
   )
 }
 
-export function IssueList({ searchQuery, onIssueClick }: IssueListProps): React.JSX.Element {
-  const { data: allIssues = [], isLoading, error } = useSearchIssues(searchQuery)
+export function IssueList({ searchQuery, onIssueClick, projectId }: IssueListProps): React.JSX.Element {
+  const { data: allIssuesFromAll = [], isLoading: isLoadingAll, error: errorAll } = useSearchIssues(searchQuery)
+  const { data: allIssuesFromProject = [], isLoading: isLoadingProject, error: errorProject } = useSearchIssuesInProject(projectId || null, searchQuery)
+
+  const allIssues = projectId ? allIssuesFromProject : allIssuesFromAll
+  const isLoading = projectId ? isLoadingProject : isLoadingAll
+  const error = projectId ? errorProject : errorAll
 
   // Filter to show only open issues in the table
   const issues = useMemo(

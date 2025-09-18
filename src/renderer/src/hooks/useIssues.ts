@@ -16,6 +16,7 @@ type DbIssue = {
   priority: 'low' | 'medium' | 'high' | 'critical'
   effort: 'low' | 'medium' | 'high'
   tags: string[] | null
+  projectId: number
   createdAt: Date
   updatedAt: Date
 }
@@ -26,6 +27,7 @@ function convertIssue(dbIssue: DbIssue): Issue {
     ...dbIssue,
     id: dbIssue.id.toString(), // Convert number ID to string for compatibility
     effort: dbIssue.effort || 'medium', // Provide default for undefined effort
+    projectId: dbIssue.projectId,
     createdAt: new Date(dbIssue.createdAt),
     updatedAt: new Date(dbIssue.updatedAt),
     tags: dbIssue.tags || [],
@@ -38,6 +40,7 @@ const issueKeys = {
   all: ['issues'] as const,
   lists: () => [...issueKeys.all, 'list'] as const,
   list: (filters: string) => [...issueKeys.lists(), { filters }] as const,
+  byProject: (projectId: number) => [...issueKeys.all, 'project', projectId] as const,
   details: () => [...issueKeys.all, 'detail'] as const,
   detail: (id: string) => [...issueKeys.details(), id] as const
 }
@@ -99,6 +102,7 @@ export function useCreateIssue(): UseMutationResult<
         priority: 'medium',
         effort: 'medium',
         tags: [],
+        projectId: 0, // Will be set by backend
         createdAt: new Date(),
         updatedAt: new Date(),
         _isOptimistic: true,
@@ -205,5 +209,35 @@ export function useSearchIssues(query: string): UseQueryResult<Issue[], Error> {
       const issues = await window.api.issues.search(query)
       return issues.map(convertIssue)
     }
+  })
+}
+
+// Get issues by project
+export function useIssuesByProject(projectId: number | null): UseQueryResult<Issue[], Error> {
+  return useQuery({
+    queryKey: issueKeys.byProject(projectId || 0),
+    queryFn: async () => {
+      if (!projectId) return []
+      const issues = await window.api.issues.getByProject(projectId)
+      return issues.map(convertIssue)
+    },
+    enabled: !!projectId
+  })
+}
+
+// Search issues within a project
+export function useSearchIssuesInProject(projectId: number | null, query: string): UseQueryResult<Issue[], Error> {
+  return useQuery({
+    queryKey: [...issueKeys.byProject(projectId || 0), { query }],
+    queryFn: async () => {
+      if (!projectId) return []
+      if (!query) {
+        const issues = await window.api.issues.getByProject(projectId)
+        return issues.map(convertIssue)
+      }
+      const issues = await window.api.issues.searchInProject(projectId, query)
+      return issues.map(convertIssue)
+    },
+    enabled: !!projectId
   })
 }

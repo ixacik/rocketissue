@@ -9,6 +9,7 @@ export interface Issue {
   status: IssueStatus
   priority: IssuePriority
   effort: IssueEffort
+  projectId: number
   createdAt: Date
   updatedAt: Date
   tags?: string[]

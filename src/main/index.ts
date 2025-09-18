@@ -2,8 +2,8 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { initDatabase, issueOperations } from './db/database'
-import type { Issue } from './db/schema'
+import { initDatabase, issueOperations, projectOperations } from './db/database'
+import type { Issue, Project } from './db/schema'
 import { analyzeIssue } from './services/ai'
 
 function createWindow(): void {
@@ -57,6 +57,15 @@ app.whenReady().then(() => {
     }
   })
 
+  ipcMain.handle('issues:getByProject', async (_, projectId: number) => {
+    try {
+      return issueOperations.getByProject(projectId)
+    } catch (error) {
+      console.error('IPC: Error in issues:getByProject:', error)
+      throw error
+    }
+  })
+
   ipcMain.handle('issues:getById', (_, id: number) => {
     return issueOperations.getById(id)
   })
@@ -83,8 +92,9 @@ app.whenReady().then(() => {
             status: 'open',
             priority: analysis.priority,
             effort: analysis.effort,
-            tags: analysis.tags
-          }
+            tags: analysis.tags,
+            projectId: undefined // Will be set to default in DB layer
+          } as any
 
           // AI successfully generated issue
         } else {
@@ -99,8 +109,9 @@ app.whenReady().then(() => {
             status: 'open',
             priority: 'medium',
             effort: 'medium',
-            tags: []
-          }
+            tags: [],
+            projectId: undefined // Will be set to default in DB layer
+          } as any
 
           // Fallback parsing: first line as title
         }
@@ -116,8 +127,9 @@ app.whenReady().then(() => {
           status: 'open',
           priority: 'medium',
           effort: 'medium',
-          tags: []
-        })
+          tags: [],
+          projectId: undefined // Will be set to default in DB layer
+        } as any)
       }
     }
   )
@@ -135,6 +147,44 @@ app.whenReady().then(() => {
 
   ipcMain.handle('issues:search', (_, query: string) => {
     return issueOperations.search(query)
+  })
+
+  ipcMain.handle('issues:searchInProject', (_, projectId: number, query: string) => {
+    return issueOperations.searchInProject(projectId, query)
+  })
+
+  // Project IPC handlers
+  ipcMain.handle('projects:getAll', async () => {
+    try {
+      return projectOperations.getAll()
+    } catch (error) {
+      console.error('IPC: Error in projects:getAll:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('projects:getById', (_, id: number) => {
+    return projectOperations.getById(id)
+  })
+
+  ipcMain.handle('projects:create', (_, project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => {
+    return projectOperations.create(project)
+  })
+
+  ipcMain.handle('projects:update', (_, id: number, updates: Partial<Omit<Project, 'id' | 'createdAt'>>) => {
+    return projectOperations.update(id, updates)
+  })
+
+  ipcMain.handle('projects:delete', (_, id: number) => {
+    return projectOperations.delete(id)
+  })
+
+  ipcMain.handle('projects:setDefault', (_, id: number) => {
+    return projectOperations.setDefault(id)
+  })
+
+  ipcMain.handle('projects:getDefault', () => {
+    return projectOperations.getDefault()
   })
 
   // Set app user model id for windows

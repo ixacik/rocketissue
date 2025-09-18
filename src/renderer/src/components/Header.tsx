@@ -3,6 +3,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Plus, Rocket, Search } from 'lucide-react'
 import { NewIssueModal } from './NewIssueModal'
+import { SpaceNavigator } from './SpaceNavigator'
+import { useProjects } from '@/hooks/useProjects'
+import { useActiveProjectId, useIsNavigating } from '@/stores/projectStore'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface HeaderProps {
   searchValue: string
@@ -11,6 +15,9 @@ interface HeaderProps {
 
 export function Header({ searchValue, onSearchChange }: HeaderProps): React.JSX.Element {
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const { data: projects = [] } = useProjects()
+  const activeProjectId = useActiveProjectId()
+  const isNavigating = useIsNavigating()
 
   // Handle keyboard shortcut for new issue (N key)
   useEffect(() => {
@@ -31,25 +38,55 @@ export function Header({ searchValue, onSearchChange }: HeaderProps): React.JSX.
 
   return (
     <>
-      <div className="flex bg-card rounded-full px-3 py-2 shadow-xl border-white/5 border-1 items-center justify-between gap-2">
-        <Rocket size={20} className="ml-1 text-foreground fill-foreground" />
-
-        <div className="flex-1 max-w-md">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search issues... (⌘K)"
-              className="pl-10 border-0 rounded-full"
-              value={searchValue}
-              onChange={(e) => onSearchChange(e.target.value)}
-            />
-          </div>
+      <div className="relative flex bg-card rounded-full px-3 py-2 shadow-xl border-white/5 border-1 items-center">
+        {/* Left side - Rocket */}
+        <div className="flex items-center">
+          <Rocket size={20} className="ml-1 text-foreground fill-foreground" />
         </div>
 
+        {/* Center content - Absolutely positioned */}
+        <div className="absolute left-1/2 -translate-x-1/2 w-full max-w-md">
+          <AnimatePresence mode="wait">
+            {!isNavigating ? (
+              <motion.div
+                key="search"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="relative"
+              >
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search issues... (⌘K)"
+                  className="pl-10 border-0 rounded-full"
+                  value={searchValue}
+                  onChange={(e) => onSearchChange(e.target.value)}
+                />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="navigator"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="flex justify-center"
+              >
+                <SpaceNavigator
+                  projects={projects}
+                  activeProjectId={activeProjectId}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Right side - New button */}
         <Button
           onClick={() => setIsModalOpen(true)}
-          className="rounded-full bg-secondary text-white"
+          className="ml-auto rounded-full bg-secondary text-white"
           title="Create new issue (Press N)"
         >
           <Plus className="h-4 w-4" />

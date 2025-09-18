@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   DndContext,
   DragStartEvent,
@@ -15,9 +16,7 @@ import {
 import {
   sortableKeyboardCoordinates
 } from '@dnd-kit/sortable'
-import { IssueList } from '@/components/IssueList'
-import { InProgressGallery } from '@/components/InProgressGallery'
-import { DoneDropZone } from '@/components/DoneDropZone'
+import { ProjectWorkspace } from '@/components/ProjectWorkspace'
 import { IssueDragOverlay } from '@/components/IssueDragOverlay'
 import { IssueDetailsModal } from '@/components/IssueDetailsModal'
 import { EditIssueModal } from '@/components/EditIssueModal'
@@ -25,6 +24,8 @@ import { Header } from '@/components/Header'
 import { CommandPalette } from '@/components/CommandPalette'
 import { useSearchIssues, useUpdateIssue } from '@/hooks/useIssues'
 import { Issue } from '@/types/issue'
+import { useProjects, useDefaultProject } from '@/hooks/useProjects'
+import { slideVariants, slideTransition } from '@/lib/animations'
 import {
   useActiveId,
   useSetActiveId,
@@ -32,11 +33,31 @@ import {
   useSetDraggedItem,
   useResetDnd
 } from '@/stores/dndStore'
+import {
+  useActiveProjectId,
+  useSetActiveProject,
+  useSetProjects,
+  useSlideDirection,
+  useSetTransitioning,
+  useIsNavigating,
+  useSetIsNavigating
+} from '@/stores/projectStore'
 
 function App(): React.JSX.Element {
   const [searchQuery, setSearchQuery] = useState('')
   const { data: issues = [] } = useSearchIssues(searchQuery)
   const updateIssue = useUpdateIssue()
+
+  // Project state
+  const { data: projects = [] } = useProjects()
+  const { data: defaultProject } = useDefaultProject()
+  const activeProjectId = useActiveProjectId()
+  const setActiveProject = useSetActiveProject()
+  const setProjects = useSetProjects()
+  const slideDirection = useSlideDirection()
+  const setTransitioning = useSetTransitioning()
+  const isNavigating = useIsNavigating()
+  const setIsNavigating = useSetIsNavigating()
 
   // Modal states
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null)
@@ -91,6 +112,89 @@ function App(): React.JSX.Element {
   useEffect(() => {
     document.documentElement.classList.add('dark')
   }, [])
+
+  // Initialize projects
+  useEffect(() => {
+    setProjects(projects)
+    // Start with create_new slot if no projects exist
+    if (!activeProjectId) {
+      if (projects.length === 0) {
+        setActiveProject(-1) // Start at create_new
+      } else if (defaultProject) {
+        setActiveProject(defaultProject.id)
+      }
+    }
+  }, [projects, defaultProject, activeProjectId, setProjects, setActiveProject])
+
+  // Calculate current index in the virtual array [project1, project2, ..., create_new]
+  const getCurrentIndex = () => {
+    if (activeProjectId === -1) {
+      return projects.length // create_new is at the end
+    }
+    return projects.findIndex(p => p.id === activeProjectId)
+  }
+
+  const currentIndex = getCurrentIndex()
+  const currentProject = activeProjectId === -1 ? null : projects.find(p => p.id === activeProjectId) || null
+  const isEmptyProject = activeProjectId === -1
+
+  // Separate effect for auto-hiding navigator after timeout
+  useEffect(() => {
+    if (isNavigating) {
+      const timeout = setTimeout(() => {
+        setIsNavigating(false)
+      }, 2000)
+
+      return () => clearTimeout(timeout)
+    }
+    return undefined
+  }, [isNavigating, setIsNavigating])
+
+  // Global arrow key navigation for projects (circular)
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      // Don't navigate if user is typing in an input
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
+
+      const totalSlots = projects.length + 1 // +1 for create_new slot
+      if (totalSlots === 1) return // Only create_new exists, nowhere to navigate
+
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault()
+
+        // Show navigator immediately
+        setIsNavigating(true)
+
+        if (e.key === 'ArrowLeft') {
+          // Move left in array (with wrap around)
+          const newIndex = (currentIndex - 1 + totalSlots) % totalSlots
+
+          if (newIndex === projects.length) {
+            // This is the create_new slot
+            setActiveProject(-1)
+          } else {
+            // This is a project slot
+            setActiveProject(projects[newIndex].id)
+          }
+        } else if (e.key === 'ArrowRight') {
+          // Move right in array (with wrap around)
+          const newIndex = (currentIndex + 1) % totalSlots
+
+          if (newIndex === projects.length) {
+            // This is the create_new slot
+            setActiveProject(-1)
+          } else {
+            // This is a project slot
+            setActiveProject(projects[newIndex].id)
+          }
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [projects, currentIndex, setActiveProject, setIsNavigating])
 
   const handleIssueClick = useCallback((issue: Issue) => {
     setSelectedIssue(issue)
@@ -192,37 +296,36 @@ function App(): React.JSX.Element {
       onDragCancel={handleDragCancel}
     >
       <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
-        {/* Header */}
+        {/* Header - static, outside animation */}
         <div className="flex-shrink-0 p-4 pb-2">
           <Header searchValue={searchQuery} onSearchChange={setSearchQuery} />
         </div>
 
-        {/* Main content area with vertical layout */}
-        <div className="flex-1 flex flex-col gap-4 p-4 pt-2 overflow-hidden">
-          {/* Top section: In Progress and Done zones */}
-          <div className="flex gap-4 h-[35%] min-h-[200px]">
-            {/* In-Progress Gallery (70% of top section) */}
-            <div className="flex-[7] min-w-0">
-              <InProgressGallery issues={issues} onIssueClick={handleIssueClick} />
-            </div>
-
-            {/* Done Drop Zone (30% of top section) */}
-            <div className="flex-[3] min-w-[200px]">
-              <DoneDropZone />
-            </div>
-          </div>
-
-          {/* Bottom section: Open Issues Table */}
-          <div className="flex-1 flex flex-col min-h-0">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-muted-foreground">
-                Open Issues ({issues.filter(i => i.status === 'open').length})
-              </h2>
-            </div>
-            <div className="flex-1 overflow-auto scrollbar-hide">
-              <IssueList searchQuery={searchQuery} onIssueClick={handleIssueClick} />
-            </div>
-          </div>
+        {/* Main content area with slide transitions */}
+        <div className="flex-1 p-4 pt-2 overflow-hidden relative">
+          <AnimatePresence mode="wait" custom={slideDirection}>
+            <motion.div
+              key={activeProjectId || 'empty'}
+              custom={slideDirection}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={slideTransition}
+              className="h-full"
+              onAnimationStart={() => setTransitioning(true)}
+              onAnimationComplete={() => setTransitioning(false)}
+            >
+              <ProjectWorkspace
+                projectId={isEmptyProject ? null : activeProjectId}
+                project={currentProject}
+                issues={issues}
+                searchQuery={searchQuery}
+                onIssueClick={handleIssueClick}
+                isEmptyProject={isEmptyProject}
+              />
+            </motion.div>
+          </AnimatePresence>
         </div>
 
         <CommandPalette />
