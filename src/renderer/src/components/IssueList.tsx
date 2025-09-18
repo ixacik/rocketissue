@@ -62,6 +62,10 @@ interface IssueListProps {
   setPriorityFilter?: (value: IssuePriority | 'all') => void
   effortFilter?: IssueEffort | 'all'
   setEffortFilter?: (value: IssueEffort | 'all') => void
+  keyboardContext?: 'table' | 'gallery' | null
+  keyboardIssueId?: string | null
+  onKeyboardIssueChange?: (issueId: string | null) => void
+  onKeyboardBoundary?: (direction: 'up' | 'down', issueId: string | null) => void
 }
 
 const priorityOrder: Record<IssuePriority, number> = {
@@ -167,7 +171,11 @@ export function IssueList({
   priorityFilter: externalPriorityFilter,
   setPriorityFilter: externalSetPriorityFilter,
   effortFilter: externalEffortFilter,
-  setEffortFilter: externalSetEffortFilter
+  setEffortFilter: externalSetEffortFilter,
+  keyboardContext = null,
+  keyboardIssueId = null,
+  onKeyboardIssueChange,
+  onKeyboardBoundary
 }: IssueListProps): React.JSX.Element {
   // Only fetch issues if not provided via props
   const {
@@ -241,8 +249,9 @@ export function IssueList({
       selectionModeRef.current = 'mouse'
       setSelectionMode('mouse')
       setKeyboardSelectedId(null)
+      onKeyboardIssueChange?.(null)
     }
-  }, [selectionMode])
+  }, [selectionMode, onKeyboardIssueChange])
 
   const switchToKeyboardMode = useCallback(() => {
     if (selectionMode !== 'keyboard') {
@@ -255,6 +264,36 @@ export function IssueList({
   useEffect(() => {
     selectionModeRef.current = selectionMode
   }, [selectionMode])
+
+  const setKeyboardSelection = useCallback(
+    (issueId: string | null) => {
+      setKeyboardSelectedId((prev) => (prev === issueId ? prev : issueId))
+      if (keyboardSelectedId !== issueId) {
+        onKeyboardIssueChange?.(issueId)
+      }
+    },
+    [keyboardSelectedId, onKeyboardIssueChange]
+  )
+
+  useEffect(() => {
+    if (keyboardContext !== 'table') {
+      if (keyboardSelectedId !== null) {
+        setKeyboardSelectedId(null)
+      }
+      return
+    }
+
+    if (!keyboardIssueId) {
+      if (keyboardSelectedId !== null) {
+        setKeyboardSelectedId(null)
+      }
+      return
+    }
+
+    selectionModeRef.current = 'keyboard'
+    setSelectionMode((current) => (current === 'keyboard' ? current : 'keyboard'))
+    setKeyboardSelectedId((current) => (current === keyboardIssueId ? current : keyboardIssueId))
+  }, [keyboardContext, keyboardIssueId, keyboardSelectedId])
 
   // Active row is determined by current mode
   const activeRowId = selectionMode === 'mouse' ? hoveredRowId : keyboardSelectedId
@@ -282,6 +321,7 @@ export function IssueList({
       setDeleteConfirmId(null)
     }
   }, [deleteConfirmId, deleteIssue])
+  const deleteActionButtonRef = useRef<HTMLButtonElement | null>(null)
 
   const handleRowClick = useCallback(
     (issue: Issue) => {
@@ -343,7 +383,8 @@ export function IssueList({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
       // Don't handle keyboard shortcuts when modals are open or when typing in inputs
-      if (isModalOpen || isEditModalOpen) return
+      if (isModalOpen || isEditModalOpen || deleteConfirmId) return
+      if (keyboardContext === 'gallery') return
       const activeElement = document.activeElement
       if (activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA') return
 
@@ -354,21 +395,41 @@ export function IssueList({
       switch (e.key) {
         case 'ArrowUp':
           e.preventDefault()
-          if (issues.length > 0) {
-            // Switch to keyboard mode
-            switchToKeyboardMode()
-            const newIndex = currentIndex > 0 ? currentIndex - 1 : 0
-            setKeyboardSelectedId(issues[newIndex].id)
+          if (issues.length === 0) {
+            onKeyboardBoundary?.('up', null)
+            return
+          }
+
+          switchToKeyboardMode()
+          if (!activeIssue) {
+            setKeyboardSelection(issues[0].id)
+            return
+          }
+
+          if (currentIndex > 0) {
+            setKeyboardSelection(issues[currentIndex - 1].id)
+          } else {
+            onKeyboardBoundary?.('up', activeIssue.id)
           }
           break
 
         case 'ArrowDown':
           e.preventDefault()
-          if (issues.length > 0) {
-            // Switch to keyboard mode
-            switchToKeyboardMode()
-            const newIndex = currentIndex < issues.length - 1 ? currentIndex + 1 : issues.length - 1
-            setKeyboardSelectedId(issues[newIndex].id)
+          if (issues.length === 0) {
+            onKeyboardBoundary?.('down', null)
+            return
+          }
+
+          switchToKeyboardMode()
+          if (!activeIssue) {
+            setKeyboardSelection(issues[0].id)
+            return
+          }
+
+          if (currentIndex < issues.length - 1) {
+            setKeyboardSelection(issues[currentIndex + 1].id)
+          } else {
+            onKeyboardBoundary?.('down', activeIssue.id)
           }
           break
 
@@ -412,11 +473,15 @@ export function IssueList({
     activeRowId,
     isModalOpen,
     isEditModalOpen,
+    deleteConfirmId,
+    keyboardContext,
     cycleStatus,
     handleEdit,
     handleDelete,
     handleRowClick,
-    switchToKeyboardMode
+    switchToKeyboardMode,
+    setKeyboardSelection,
+    onKeyboardBoundary
   ])
 
   const columnWidthClasses: Record<string, string> = {
@@ -877,7 +942,12 @@ export function IssueList({
         open={!!deleteConfirmId}
         onOpenChange={(open) => !open && setDeleteConfirmId(null)}
       >
-        <AlertDialogContent>
+        <AlertDialogContent
+          onOpenAutoFocus={(event) => {
+            event.preventDefault()
+            deleteActionButtonRef.current?.focus()
+          }}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -887,7 +957,9 @@ export function IssueList({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setDeleteConfirmId(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>Delete Issue</AlertDialogAction>
+            <AlertDialogAction ref={deleteActionButtonRef} onClick={confirmDelete}>
+              Delete Issue
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

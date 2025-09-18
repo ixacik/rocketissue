@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState, useMemo } from 'react'
+import { ReactNode, useEffect, useState, useMemo, useCallback } from 'react'
 import { IssueList } from '@/components/IssueList'
 import { InProgressGallery } from '@/components/InProgressGallery'
 import { DoneDropZone } from '@/components/DoneDropZone'
@@ -36,6 +36,8 @@ export function ProjectWorkspace({
   const [typeFilter, setTypeFilter] = useState<IssueType | 'all'>('all')
   const [priorityFilter, setPriorityFilter] = useState<IssuePriority | 'all'>('all')
   const [effortFilter, setEffortFilter] = useState<IssueEffort | 'all'>('all')
+  const [keyboardContext, setKeyboardContext] = useState<'table' | 'gallery' | null>(null)
+  const [keyboardIssueId, setKeyboardIssueId] = useState<string | null>(null)
 
   // Filter issues for this project (always return empty array if no projectId)
   const projectIssues = projectId ? issues.filter((i) => i.projectId === projectId) : []
@@ -46,6 +48,10 @@ export function ProjectWorkspace({
     [projectIssues]
   )
   const allIssuesCount = projectIssues.length
+  const inProgressIssues = useMemo(
+    () => projectIssues.filter((i) => i.status === 'in_progress'),
+    [projectIssues]
+  )
 
   // Filter issues based on view
   const viewFilteredIssues = useMemo(
@@ -101,6 +107,81 @@ export function ProjectWorkspace({
     )
   }
 
+  useEffect(() => {
+    if (isEmptyProject) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return
+      if (!event.ctrlKey || event.metaKey || event.altKey) return
+
+      const target = event.target as HTMLElement | null
+      if (
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.isContentEditable
+      ) {
+        return
+      }
+
+      const blockingDialog = document.querySelector<HTMLElement>(
+        '[data-state="open"][data-slot$="dialog-content"]'
+      )
+      if (blockingDialog) return
+
+      event.preventDefault()
+      setIssueView((prev) => (prev === 'open' ? 'all' : 'open'))
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isEmptyProject, setIssueView])
+
+  const handleTableKeyboardBoundary = useCallback(
+    (direction: 'up' | 'down') => {
+      if (direction === 'up') {
+        if (inProgressIssues.length === 0) return
+        setKeyboardContext('gallery')
+        setKeyboardIssueId(inProgressIssues.at(-1)?.id ?? null)
+      }
+    },
+    [inProgressIssues]
+  )
+
+  const handleGalleryKeyboardBoundary = useCallback(
+    (direction: 'up' | 'down') => {
+      if (direction === 'down') {
+        if (viewFilteredIssues.length === 0) {
+          setKeyboardContext(null)
+          setKeyboardIssueId(null)
+          return
+        }
+        setKeyboardContext('table')
+        setKeyboardIssueId(viewFilteredIssues[0]?.id ?? null)
+      }
+    },
+    [viewFilteredIssues]
+  )
+
+  const handleTableKeyboardChange = useCallback((issueId: string | null) => {
+    if (issueId) {
+      setKeyboardContext('table')
+      setKeyboardIssueId(issueId)
+    } else {
+      setKeyboardIssueId(null)
+      setKeyboardContext((current) => (current === 'table' ? null : current))
+    }
+  }, [])
+
+  const handleGalleryKeyboardChange = useCallback((issueId: string | null) => {
+    if (issueId) {
+      setKeyboardContext('gallery')
+      setKeyboardIssueId(issueId)
+    } else {
+      setKeyboardIssueId(null)
+      setKeyboardContext((current) => (current === 'gallery' ? null : current))
+    }
+  }, [])
+
   // Always show the full issue tracker UI, even with 0 issues
   return (
     <div className="flex-1 flex flex-col gap-4 overflow-hidden">
@@ -108,7 +189,14 @@ export function ProjectWorkspace({
       <div className="flex gap-4 h-[35%] min-h-[200px]">
         {/* In-Progress Gallery (70% of top section) */}
         <div className="flex-[7] min-w-0">
-          <InProgressGallery issues={projectIssues} onIssueClick={onIssueClick} />
+          <InProgressGallery
+            issues={projectIssues}
+            onIssueClick={onIssueClick}
+            keyboardContext={keyboardContext}
+            keyboardIssueId={keyboardContext === 'gallery' ? keyboardIssueId : null}
+            onKeyboardIssueChange={handleGalleryKeyboardChange}
+            onKeyboardBoundary={handleGalleryKeyboardBoundary}
+          />
         </div>
 
         {/* Done Drop Zone (30% of top section) */}
@@ -120,20 +208,23 @@ export function ProjectWorkspace({
       {/* Bottom section: Issues Table */}
       <div className="flex-1 flex flex-col min-h-0">
         <div className="flex items-center justify-between mb-3">
-          <Tabs
-            value={issueView}
-            onValueChange={(v) => setIssueView(v as 'open' | 'all')}
-            className="h-7"
-          >
-            <TabsList className="h-7 p-0.5">
-              <TabsTrigger value="open" className="h-6 px-3 text-xs data-[state=active]:text-xs">
-                Open ({openIssuesCount})
-              </TabsTrigger>
-              <TabsTrigger value="all" className="h-6 px-3 text-xs data-[state=active]:text-xs">
-                All ({allIssuesCount})
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="flex items-center gap-2">
+            <Tabs
+              value={issueView}
+              onValueChange={(v) => setIssueView(v as 'open' | 'all')}
+              className="h-7"
+            >
+              <TabsList className="h-7 p-0.5">
+                <TabsTrigger value="open" className="h-6 px-3 text-xs data-[state=active]:text-xs">
+                  Open ({openIssuesCount})
+                </TabsTrigger>
+                <TabsTrigger value="all" className="h-6 px-3 text-xs data-[state=active]:text-xs">
+                  All ({allIssuesCount})
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <span className="text-muted-foreground text-xs">(Ctrl+Tab)</span>
+          </div>
           <Button
             variant="ghost"
             size="sm"
@@ -166,6 +257,10 @@ export function ProjectWorkspace({
             setPriorityFilter={setPriorityFilter}
             effortFilter={effortFilter}
             setEffortFilter={setEffortFilter}
+            keyboardContext={keyboardContext}
+            keyboardIssueId={keyboardContext === 'table' ? keyboardIssueId : null}
+            onKeyboardIssueChange={handleTableKeyboardChange}
+            onKeyboardBoundary={handleTableKeyboardBoundary}
           />
         </div>
       </div>

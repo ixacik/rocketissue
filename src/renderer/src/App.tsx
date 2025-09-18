@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   DndContext,
@@ -75,6 +75,7 @@ function App(): React.JSX.Element {
   const [editingIssue, setEditingIssue] = useState<Issue | null>(null)
   const [isDeleteProjectModalOpen, setIsDeleteProjectModalOpen] = useState(false)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const deleteActionButtonRef = useRef<HTMLButtonElement | null>(null)
 
   // DnD state from Zustand
   const activeId = useActiveId()
@@ -165,6 +166,7 @@ function App(): React.JSX.Element {
   // Global arrow key navigation for projects (circular)
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      if (deleteConfirmId) return
       // Don't navigate if user is typing in an input
       const target = e.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
@@ -206,11 +208,12 @@ function App(): React.JSX.Element {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [projects, currentIndex, setActiveProject, setIsNavigating])
+  }, [projects, currentIndex, setActiveProject, setIsNavigating, deleteConfirmId])
 
   // Shift+D to delete current project
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      if (deleteConfirmId) return
       // Don't trigger if typing in an input or if no valid project
       const target = e.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
@@ -227,7 +230,7 @@ function App(): React.JSX.Element {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currentProject, activeProjectId])
+  }, [currentProject, activeProjectId, deleteConfirmId])
 
   const handleIssueClick = useCallback((issue: Issue) => {
     setSelectedIssue(issue)
@@ -437,7 +440,12 @@ function App(): React.JSX.Element {
           open={!!deleteConfirmId}
           onOpenChange={(open) => !open && setDeleteConfirmId(null)}
         >
-          <AlertDialogContent>
+          <AlertDialogContent
+            onOpenAutoFocus={(event) => {
+              event.preventDefault()
+              deleteActionButtonRef.current?.focus()
+            }}
+          >
             <AlertDialogHeader>
               <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
               <AlertDialogDescription>
@@ -447,7 +455,7 @@ function App(): React.JSX.Element {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel onClick={() => setDeleteConfirmId(null)}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmDelete} autoFocus>
+              <AlertDialogAction ref={deleteActionButtonRef} onClick={confirmDelete}>
                 Delete Issue
               </AlertDialogAction>
             </AlertDialogFooter>
