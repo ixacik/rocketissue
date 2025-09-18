@@ -4,6 +4,7 @@ Fully keyboard-centric solo developer focused issue tracker. Built for maximum s
 <img width="1132" height="912" alt="image" src="https://github.com/user-attachments/assets/7632a1d9-4d74-4d42-958e-8bcb88226c6b" />
 
 ## AI-Driven Issue Capture
+You just describe the issue in plain text, AI auto-assigns a priority, effort level, type (bug, feature, ...) and formats and polishes your description into a clear title and description.
 
 <img width="1131" height="901" alt="image" src="https://github.com/user-attachments/assets/77aeec7a-ad41-421f-9c1a-2f9382a21149" />
 
