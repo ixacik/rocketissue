@@ -10,8 +10,8 @@ const api = {
     getById: (id: number) => ipcRenderer.invoke('issues:getById', id),
     create: (issue: Omit<Issue, 'id' | 'createdAt' | 'updatedAt'>) =>
       ipcRenderer.invoke('issues:create', issue),
-    createWithAI: (rawInput: string) =>
-      ipcRenderer.invoke('issues:createWithAI', rawInput),
+    createWithAI: (rawInput: string, projectId: number) =>
+      ipcRenderer.invoke('issues:createWithAI', rawInput, projectId),
     update: (id: number, updates: Partial<Omit<Issue, 'id' | 'createdAt'>>) =>
       ipcRenderer.invoke('issues:update', id, updates),
     delete: (id: number) => ipcRenderer.invoke('issues:delete', id),
@@ -26,9 +26,7 @@ const api = {
       ipcRenderer.invoke('projects:create', project),
     update: (id: number, updates: Partial<Omit<Project, 'id' | 'createdAt'>>) =>
       ipcRenderer.invoke('projects:update', id, updates),
-    delete: (id: number) => ipcRenderer.invoke('projects:delete', id),
-    setDefault: (id: number) => ipcRenderer.invoke('projects:setDefault', id),
-    getDefault: () => ipcRenderer.invoke('projects:getDefault')
+    delete: (id: number) => ipcRenderer.invoke('projects:delete', id)
   }
 }
 

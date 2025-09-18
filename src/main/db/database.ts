@@ -34,18 +34,6 @@ export function initDatabase(): void {
       )
     `)
 
-    // Check if default project exists
-    const defaultProject = db.select().from(projects).where(eq(projects.isDefault, true)).get()
-    if (!defaultProject) {
-      // Create default project
-      db.insert(projects).values({
-        name: 'My Issues',
-        slug: 'my-issues',
-        color: '#0077ff',
-        isDefault: true
-      }).run()
-    }
-
     // Create issues table with project_id
     sqlite.exec(`
       CREATE TABLE IF NOT EXISTS issues (
@@ -63,24 +51,6 @@ export function initDatabase(): void {
       )
     `)
 
-    // Migrate existing issues if needed
-    try {
-      // Check if project_id column exists
-      const hasProjectId = sqlite.prepare("PRAGMA table_info(issues)").all()
-        .some((col: any) => col.name === 'project_id')
-
-      if (!hasProjectId) {
-        // Add project_id column
-        const defaultProj = db.select().from(projects).where(eq(projects.isDefault, true)).get()
-        if (defaultProj) {
-          sqlite.exec(`ALTER TABLE issues ADD COLUMN project_id INTEGER DEFAULT ${defaultProj.id}`)
-          // Update all existing issues to have the default project
-          sqlite.exec(`UPDATE issues SET project_id = ${defaultProj.id} WHERE project_id IS NULL`)
-        }
-      }
-    } catch {
-      // Column already exists or migration not needed
-    }
 
     // Add effort column for existing databases (will fail silently if column exists)
     try {
@@ -126,17 +96,12 @@ export const issueOperations = {
     return db.select().from(issues).where(eq(issues.id, id)).get()
   },
 
-  // Create new issue
+  // Create new issue - projectId is required
   create: (issue: Omit<NewIssue, 'id' | 'createdAt' | 'updatedAt'>): Issue => {
-    // If no projectId provided, use default project
-    let issueData = { ...issue }
-    if (!issueData.projectId) {
-      const defaultProject = db.select().from(projects).where(eq(projects.isDefault, true)).get()
-      if (defaultProject) {
-        issueData.projectId = defaultProject.id
-      }
+    if (!issue.projectId) {
+      throw new Error('projectId is required to create an issue')
     }
-    const result = db.insert(issues).values(issueData).returning().get()
+    const result = db.insert(issues).values(issue).returning().get()
     return result
   },
 
@@ -221,26 +186,7 @@ export const projectOperations = {
 
   // Delete project
   delete: (id: number): boolean => {
-    // Don't allow deleting default project
-    const project = db.select().from(projects).where(eq(projects.id, id)).get()
-    if (project?.isDefault) {
-      return false
-    }
     const result = db.delete(projects).where(eq(projects.id, id)).run()
     return result.changes > 0
-  },
-
-  // Set default project
-  setDefault: (id: number): boolean => {
-    // Remove default from all projects
-    db.update(projects).set({ isDefault: false }).run()
-    // Set new default
-    const result = db.update(projects).set({ isDefault: true }).where(eq(projects.id, id)).run()
-    return result.changes > 0
-  },
-
-  // Get default project
-  getDefault: (): Project | undefined => {
-    return db.select().from(projects).where(eq(projects.isDefault, true)).get()
   }
 }

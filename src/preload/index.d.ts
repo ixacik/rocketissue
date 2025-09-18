@@ -6,7 +6,7 @@ interface IssuesAPI {
   getByProject: (projectId: number) => Promise<Issue[]>
   getById: (id: number) => Promise<Issue | undefined>
   create: (issue: Omit<Issue, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Issue>
-  createWithAI: (rawInput: string) => Promise<Issue>
+  createWithAI: (rawInput: string, projectId: number) => Promise<Issue>
   update: (
     id: number,
     updates: Partial<Omit<Issue, 'id' | 'createdAt'>>
@@ -25,8 +25,6 @@ interface ProjectsAPI {
     updates: Partial<Omit<Project, 'id' | 'createdAt'>>
   ) => Promise<Project | undefined>
   delete: (id: number) => Promise<boolean>
-  setDefault: (id: number) => Promise<boolean>
-  getDefault: () => Promise<Project | undefined>
 }
 
 declare global {

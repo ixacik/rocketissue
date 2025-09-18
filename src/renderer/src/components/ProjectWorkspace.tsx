@@ -56,7 +56,7 @@ export function ProjectWorkspace({
   if (isEmptyProject) {
     return (
       <>
-        <div className="flex-1 flex items-center justify-center">
+        <div className="h-4/5 flex items-center justify-center">
           <div className="text-center">
             <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
               <Plus className="h-10 w-10 text-muted-foreground" />

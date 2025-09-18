@@ -5,19 +5,22 @@ import { Plus, Rocket, Search } from 'lucide-react'
 import { NewIssueModal } from './NewIssueModal'
 import { SpaceNavigator } from './SpaceNavigator'
 import { useProjects } from '@/hooks/useProjects'
-import { useActiveProjectId, useIsNavigating } from '@/stores/projectStore'
+import { useIsNavigating } from '@/stores/projectStore'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface HeaderProps {
   searchValue: string
   onSearchChange: (value: string) => void
+  activeProjectId: number | null
 }
 
-export function Header({ searchValue, onSearchChange }: HeaderProps): React.JSX.Element {
+export function Header({ searchValue, onSearchChange, activeProjectId }: HeaderProps): React.JSX.Element {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const { data: projects = [] } = useProjects()
-  const activeProjectId = useActiveProjectId()
   const isNavigating = useIsNavigating()
+
+  // Check if we can create issues (valid project selected)
+  const canCreateIssue = activeProjectId !== null && activeProjectId !== -1
 
   // Handle keyboard shortcut for new issue (N key)
   useEffect(() => {
@@ -26,7 +29,7 @@ export function Header({ searchValue, onSearchChange }: HeaderProps): React.JSX.
       const target = e.target as HTMLElement
       const isTyping = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA'
 
-      if (e.key === 'n' && !isTyping && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      if (e.key === 'n' && !isTyping && !e.metaKey && !e.ctrlKey && !e.altKey && canCreateIssue) {
         e.preventDefault()
         setIsModalOpen(true)
       }
@@ -34,7 +37,7 @@ export function Header({ searchValue, onSearchChange }: HeaderProps): React.JSX.
 
     window.addEventListener('keydown', handleKeyPress)
     return () => window.removeEventListener('keydown', handleKeyPress)
-  }, [])
+  }, [canCreateIssue])
 
   return (
     <>
@@ -86,15 +89,20 @@ export function Header({ searchValue, onSearchChange }: HeaderProps): React.JSX.
         {/* Right side - New button */}
         <Button
           onClick={() => setIsModalOpen(true)}
-          className="ml-auto rounded-full bg-secondary text-white"
-          title="Create new issue (Press N)"
+          className="ml-auto rounded-full bg-secondary text-white disabled:opacity-50"
+          title={canCreateIssue ? "Create new issue (Press N)" : "Select a project first"}
+          disabled={!canCreateIssue}
         >
           <Plus className="h-4 w-4" />
           New (N)
         </Button>
       </div>
 
-      <NewIssueModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <NewIssueModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        projectId={activeProjectId}
+      />
     </>
   )
 }

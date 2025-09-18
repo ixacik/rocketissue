@@ -75,17 +75,17 @@ export function useIssue(id: string): UseQueryResult<Issue | undefined, Error> {
 export function useCreateIssue(): UseMutationResult<
   Issue,
   Error,
-  string // Now accepts raw input string
+  { rawInput: string; projectId: number }
 > {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (rawInput: string) => {
-      // Use AI-enhanced creation with raw input
-      const created = await window.api.issues.createWithAI(rawInput)
+    mutationFn: async ({ rawInput, projectId }: { rawInput: string; projectId: number }) => {
+      // Use AI-enhanced creation with raw input and projectId
+      const created = await window.api.issues.createWithAI(rawInput, projectId)
       return convertIssue(created)
     },
-    onMutate: async (rawInput) => {
+    onMutate: async ({ rawInput, projectId }) => {
       // Cancel any outgoing refetches to prevent overwriting optimistic update
       await queryClient.cancelQueries({ queryKey: issueKeys.all })
 
@@ -102,7 +102,7 @@ export function useCreateIssue(): UseMutationResult<
         priority: 'medium',
         effort: 'medium',
         tags: [],
-        projectId: 0, // Will be set by backend
+        projectId,
         createdAt: new Date(),
         updatedAt: new Date(),
         _isOptimistic: true,

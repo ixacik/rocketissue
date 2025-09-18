@@ -68,13 +68,3 @@ export function useDeleteProject() {
     }
   })
 }
-
-export function useDefaultProject() {
-  return useQuery({
-    queryKey: ['projects', 'default'],
-    queryFn: async () => {
-      const project = await window.api.projects.getDefault()
-      return project as Project | null
-    }
-  })
-}

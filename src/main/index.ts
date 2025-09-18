@@ -74,10 +74,14 @@ app.whenReady().then(() => {
     return issueOperations.create(issue)
   })
 
-  // AI-enhanced issue creation from raw input
+  // AI-enhanced issue creation from raw input - now requires projectId
   ipcMain.handle(
     'issues:createWithAI',
-    async (_, rawInput: string) => {
+    async (_, rawInput: string, projectId: number) => {
+      if (!projectId) {
+        throw new Error('projectId is required to create an issue')
+      }
+
       try {
         // Try to get AI analysis
         const analysis = await analyzeIssue(rawInput)
@@ -93,10 +97,8 @@ app.whenReady().then(() => {
             priority: analysis.priority,
             effort: analysis.effort,
             tags: analysis.tags,
-            projectId: undefined // Will be set to default in DB layer
+            projectId
           } as any
-
-          // AI successfully generated issue
         } else {
           // Fallback: Use first line as title, rest as description
           const lines = rawInput.trim().split('\n')
@@ -110,10 +112,8 @@ app.whenReady().then(() => {
             priority: 'medium',
             effort: 'medium',
             tags: [],
-            projectId: undefined // Will be set to default in DB layer
+            projectId
           } as any
-
-          // Fallback parsing: first line as title
         }
 
         return issueOperations.create(issueData)
@@ -128,7 +128,7 @@ app.whenReady().then(() => {
           priority: 'medium',
           effort: 'medium',
           tags: [],
-          projectId: undefined // Will be set to default in DB layer
+          projectId
         } as any)
       }
     }
@@ -179,13 +179,6 @@ app.whenReady().then(() => {
     return projectOperations.delete(id)
   })
 
-  ipcMain.handle('projects:setDefault', (_, id: number) => {
-    return projectOperations.setDefault(id)
-  })
-
-  ipcMain.handle('projects:getDefault', () => {
-    return projectOperations.getDefault()
-  })
 
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')

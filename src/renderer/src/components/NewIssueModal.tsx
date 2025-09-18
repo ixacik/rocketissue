@@ -15,9 +15,10 @@ import { useCreateIssue } from '@/hooks/useIssues'
 interface NewIssueModalProps {
   isOpen: boolean
   onClose: () => void
+  projectId: number | null
 }
 
-export function NewIssueModal({ isOpen, onClose }: NewIssueModalProps): React.JSX.Element {
+export function NewIssueModal({ isOpen, onClose, projectId }: NewIssueModalProps): React.JSX.Element {
   const createIssue = useCreateIssue()
 
   const [description, setDescription] = useState('')
@@ -28,10 +29,10 @@ export function NewIssueModal({ isOpen, onClose }: NewIssueModalProps): React.JS
   }
 
   const handleSubmit = (): void => {
-    if (!description.trim()) return
+    if (!description.trim() || !projectId || projectId === -1) return
 
-    // Fire the mutation with raw input
-    createIssue.mutate(description.trim())
+    // Fire the mutation with raw input and projectId
+    createIssue.mutate({ rawInput: description.trim(), projectId })
 
     // Close modal immediately (optimistic UI)
     setDescription('')

@@ -22,9 +22,10 @@ import { IssueDetailsModal } from '@/components/IssueDetailsModal'
 import { EditIssueModal } from '@/components/EditIssueModal'
 import { Header } from '@/components/Header'
 import { CommandPalette } from '@/components/CommandPalette'
+import { DeleteProjectModal } from '@/components/DeleteProjectModal'
 import { useSearchIssues, useUpdateIssue } from '@/hooks/useIssues'
 import { Issue } from '@/types/issue'
-import { useProjects, useDefaultProject } from '@/hooks/useProjects'
+import { useProjects } from '@/hooks/useProjects'
 import { slideVariants, slideTransition } from '@/lib/animations'
 import {
   useActiveId,
@@ -50,7 +51,6 @@ function App(): React.JSX.Element {
 
   // Project state
   const { data: projects = [] } = useProjects()
-  const { data: defaultProject } = useDefaultProject()
   const activeProjectId = useActiveProjectId()
   const setActiveProject = useSetActiveProject()
   const setProjects = useSetProjects()
@@ -64,6 +64,7 @@ function App(): React.JSX.Element {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editingIssue, setEditingIssue] = useState<Issue | null>(null)
+  const [isDeleteProjectModalOpen, setIsDeleteProjectModalOpen] = useState(false)
 
   // DnD state from Zustand
   const activeId = useActiveId()
@@ -116,15 +117,15 @@ function App(): React.JSX.Element {
   // Initialize projects
   useEffect(() => {
     setProjects(projects)
-    // Start with create_new slot if no projects exist
+    // Start with create_new slot if no projects exist, or first project
     if (!activeProjectId) {
       if (projects.length === 0) {
         setActiveProject(-1) // Start at create_new
-      } else if (defaultProject) {
-        setActiveProject(defaultProject.id)
+      } else {
+        setActiveProject(projects[0].id) // Use first project
       }
     }
-  }, [projects, defaultProject, activeProjectId, setProjects, setActiveProject])
+  }, [projects, activeProjectId, setProjects, setActiveProject])
 
   // Calculate current index in the virtual array [project1, project2, ..., create_new]
   const getCurrentIndex = () => {
@@ -195,6 +196,27 @@ function App(): React.JSX.Element {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [projects, currentIndex, setActiveProject, setIsNavigating])
+
+  // Shift+D to delete current project
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      // Don't trigger if typing in an input or if no valid project
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
+
+      // Check for Shift+D
+      if (e.key === 'D' && e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        // Can't delete if on create new slot or no project
+        if (!currentProject || activeProjectId === -1 || activeProjectId === null) return
+
+        e.preventDefault()
+        setIsDeleteProjectModalOpen(true)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [currentProject, activeProjectId])
 
   const handleIssueClick = useCallback((issue: Issue) => {
     setSelectedIssue(issue)
@@ -298,7 +320,11 @@ function App(): React.JSX.Element {
       <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
         {/* Header - static, outside animation */}
         <div className="flex-shrink-0 p-4 pb-2">
-          <Header searchValue={searchQuery} onSearchChange={setSearchQuery} />
+          <Header
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery}
+            activeProjectId={activeProjectId}
+          />
         </div>
 
         {/* Main content area with slide transitions */}
@@ -353,6 +379,25 @@ function App(): React.JSX.Element {
             }}
           />
         )}
+
+        {/* Delete Project Modal */}
+        <DeleteProjectModal
+          isOpen={isDeleteProjectModalOpen}
+          onClose={() => setIsDeleteProjectModalOpen(false)}
+          project={currentProject}
+          onDeleted={() => {
+            // After deletion, move to first project or create new
+            if (projects.length > 1) {
+              const remainingProjects = projects.filter(p => p.id !== currentProject?.id)
+              if (remainingProjects.length > 0) {
+                setActiveProject(remainingProjects[0].id)
+              }
+            } else {
+              // No projects left, go to create new
+              setActiveProject(-1)
+            }
+          }}
+        />
       </div>
     </DndContext>
   )
